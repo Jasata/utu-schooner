@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Do not try to fetch favicon -->
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+    <meta   charset="utf-8">
+    <meta   name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta   name="description"
+            content="">
+    <meta   name="author"
+            content="jasata@utu.fi">
+
+    <title>Turku university - Course Virtual Machines</title>
+
+    <!-- Vendor -->
+    <link   rel="stylesheet" href="css/font-awesome.min.css">
+    <link   rel="stylesheet" href="css/bootstrap.min.css">
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/bootstrap.min.js"></script>
+    <!-- JSONForm (bootstrap style CSS dependant) -->
+    <script type="text/javascript" src="js/jsonform/underscore.js"></script>
+    <script type="text/javascript" src="js/jsonform/jsv.js"></script>
+    <script type="text/javascript" src="js/jsonform/jsonform.js"></script>
+    <!-- DataTables -->
+    <link   rel="stylesheet" href="css/datatables.css">
+    <script type="text/javascript" src="js/datatables.js"></script>
+    <!-- Flow.js & SHA1 -->
+    <script type="text/javascript" src="js/flow.js"></script>
+    <script type="text/javascript" src="js/sha1.js"></script>
+
+    <!-- Site Specific -->
+    <link   rel="stylesheet" href="css/common.css">
+    <link   rel="stylesheet" href="css/subpage.css">
+    <link   rel="stylesheet" href="css/upload.css">
+    <link   rel="stylesheet" href="css/sso.css">
+    <script src="js/common.js"></script>
+    <script src="js/sso.js"></script>
+    <script src="js/upload.js"></script>
+
+    <script type="text/javascript" charset="utf-8">
+        /*** Send File / POST to API endpoint ********************************
+         *
+         * Reqiured argument is a File object
+         */
+        function sendFile(oFile)
+        {
+            console.log("postForm(): show progress bar");
+            // Cosmetics
+            $("#dz-progress-bar").css('visibility', 'visible');
+            dzLabel("Upload in progress...");
+            dzDeactivate();
+            // Simultaneous uploads somehow manage to trigger multiple
+            // .save_file() executions at the server end. DO NOT USE!
+            var flow = new Flow({
+                target:                 '/api/file/flow',
+                singleFile:             true,
+                simultaneousUploads:    1,
+                withCredentials:        true, // For credential cookies
+                permanentErrors:        [404, 409, 415, 500, 501],
+                maxChunkRetries:        2,
+                chunkSize:              1024 * 1024 * 20, // 20 MB
+                preprocess : function(chunk) {
+                    // Src: https://github.com/flowjs/flow.js/issues/9#issuecomment-288750191
+                    if (chunk.readState == 0) {
+                        // readState=0 : Read of file chunk not started.
+                        // Triggering it now.
+                        console.log(`chunk.readState = ${chunk.readState}`);
+                        chunk.preprocessState = 0;
+                        var read = chunk.flowObj.opts.readFileFn;
+                        read(chunk.fileObj, chunk.startByte, chunk.endByte, chunk.fileObj.file.type, chunk);
+                    } else if (chunk.readState == 1) {
+                        // readState=1 : Wait! Read of chunk is in progress. 
+                        console.log(`chunk.readState = ${chunk.readState}`);
+                        chunk.preprocessState = -1;
+                    } else if (chunk.readState == 2) {
+                        // readState=2 : Read is finished.
+                        // Compute checksum.
+                        console.log(`chunk.readState = ${chunk.readState}`);
+                        var reader = new FileReader();
+                        reader.onloadend = function () {
+                            chunk.sha1 = sha1(reader.result);
+                            console.log(
+                                `Finished computing chunk#${chunk.offset} ` +
+                                `(starting at : ${chunk.startByte}, ` +
+                                `finishing at : ${chunk.endByte}) ` +
+                                `sha1 : ${chunk.sha1}`
+                            );
+                            chunk.preprocessFinished();
+                        };
+                        reader.readAsBinaryString(chunk.bytes);
+                        //reader.readAsArrayBuffer(chunk.bytes);
+                    }
+                },
+                query : function(file, chunk, isTest) {
+                    // preprocess cannot include anything in the request
+                    // THIS can and does
+                    return { 'sha1' : chunk.sha1 };
+                }
+            });
+            flow.on('fileProgress', function(file, chunk) {
+                function readablizeBytes(bytes) {
+                  var s = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'];
+                  var e = Math.floor(Math.log(bytes) / Math.log(1024));
+                return (bytes / Math.pow(1024, e)).toFixed(2) + " " + s[e];
+                }
+                function secondsToStr (temp) {
+                  function numberEnding (number) {
+                    return (number > 1) ? 's' : '';
+                  }
+                  var years = Math.floor(temp / 31536000);
+                  if (years) {
+                    return years + ' year' + numberEnding(years);
+                  }
+                  var days = Math.floor((temp %= 31536000) / 86400);
+                  if (days) {
+                    return days + ' day' + numberEnding(days);
+                  }
+                  var hours = Math.floor((temp %= 86400) / 3600);
+                  if (hours) {
+                    return hours + ' hour' + numberEnding(hours);
+                  }
+                  var minutes = Math.floor((temp %= 3600) / 60);
+                  if (minutes) {
+                    return minutes + ' minute' + numberEnding(minutes);
+                  }
+                  var seconds = temp % 60;
+                  return seconds + ' second' + numberEnding(seconds);
+                }
+                // console.log(`file ${file}, chunk ${chunk}`);
+                dzMessage(Math.floor(file.progress() * 100) + '% complete, '
+                    + readablizeBytes(file.averageSpeed) + '/s, '
+                    + secondsToStr(file.timeRemaining()) + ' remaining'
+                );
+                $("#dz-progress-bar").val(Math.floor(file.progress() * 100));
+            });
+            flow.on('error', function(message, file, chunk) {
+                alert(message);
+                console.log(message);
+                dzActivate();
+            });
+            flow.on('fileSuccess', function(file, message, chunk) {
+                console.log("Completed! Loading upload_process.html...");
+                window.location.href = 'upload_process.html?flowid=' + file.uniqueIdentifier + '&filename=' + file.name;
+            });
+            flow.addFile(oFile);
+            flow.upload();
+            return;
+        }
+
+        /**********************************************************************
+         * File Drop-Zone implementation
+         */
+        function dzLabel(msg) {
+            $("form#dz-form > label").html(msg);
+        }
+        function dzMessage(msg) {
+            $("form#dz-form > div").html(msg);
+        }
+        function dzDeactivate()
+        {
+            console.log("DropZone deactivated");
+            ;[ // FORM#dz-form event handlers
+                'dragenter',
+                'dragover',
+                'dragleave',
+                'mouseenter',
+                'mouseleave',
+                'click',
+                'drop'
+            ].forEach(eventName => {
+                $("form#dz-form").off(eventName);
+            });
+            // Its just nice to still prevent default actions
+////////////// 2020-09-04: This doesn't trigger?!?!
+            // Deactivated element implements default behavior :-(
+            $("form#dz-form").on('drop', function(e) {
+                console.log("#dz-form drop event, into deactivated element!");
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            // INPUT[type=file].onChange() event handler
+            $("form#dz-form input[type=file]").off("change");
+        }
+        function dzActivate()
+        {
+            console.log("DropZone activated");
+            // Highlight handlers /////////////////////////////////////////////
+            ;[
+                'dragenter',
+                'dragover',
+                'mouseenter'
+            ].forEach(eventName => {
+                $("form#dz-form").on(eventName, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $("form#dz-form").addClass('highlight');
+                });
+            });
+            ;[
+                'dragleave',
+                'mouseleave'
+            ].forEach(eventName => {
+                $("form#dz-form").on(eventName, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $("form#dz-form").removeClass('highlight');
+                });
+            });
+            // Drop event handler /////////////////////////////////////////////
+            $("form#dz-form").off('drop');
+            $("form#dz-form").on('drop', function(e) {
+                // In JQuery events, we have to get this under .originalEvent
+                dzLabel("Drop detected!");
+                let files = e.originalEvent.dataTransfer.files;
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('highlight');
+                if (files.length > 1)
+                {
+                    dzMessage("Only one file at the time!");
+                    return false;
+                }
+                // Accepted file suffix? 
+                if (!validFileType(files[0].name)) {
+                    dzMessage("File type not allowed! Allowed file extensions are: " + dzExtList());
+                    return false;
+                }
+                //console.log(files);
+                sendFile(files[0]);
+                return;
+            });
+            // FORM click handler /////////////////////////////////////////////
+            // Issue .click() to the INPUT TYPE="file" element to open
+            // file selection dialog.
+            // NOTE: The "file" input must have .onClick() handler that stops
+            //       event propagation back to FORM!
+            $('form#dz-form').on('click', function(e) {
+                $('form#dz-form input[type=file]').click();
+            });
+            $("form#dz-form input[type=file]").on('click', function(e) {
+                // THIS HANDLER IS SUPER IMPORTANT!
+                // Without this, the click propagates to form and the
+                // above form.click handler again triggers this.
+                e.stopPropagation();
+            });
+            // File type validation - After 'Choose File' dialog has closed ///
+            $("form#dz-form input[type=file]").off('change');
+            $("form#dz-form input[type=file]").change(function(e) {
+                // Accepted file suffix?
+                if (!validFileType(this.value)) {
+                    dzMessage("File type not allowed! Allowed file extensions are: " + dzExtList());
+                    // See upload.js:clearFileInput()
+                    clearFileInput(this);
+                    dzActivate();
+                    return false;
+                }
+                sendFile(this.files[0]);
+            });
+            dzLabel("Drag and drop file here, or click to choose file from disk");
+        } /* function dzActivate() */
+
+        /*** DOCUMENT READY **************************************************
+         * 
+         *  Initialize page elements
+         */
+        $(document).ready(function() {
+            console.log("TODO: INPUT[type=file].onChange() use sendFile() instead!!");
+            // DropZone init
+            dzDeactivate();
+            // Initialize SSO element
+            $("#sso").sso();
+
+            // Attach event handler for 'stateChanged'.
+            // Reload the table and clear out the form on 'stateChanged' event.
+            // It only happens when authenticated session is disposed (logout).
+            $("#sso").on('stateChanged', function(event, role) {
+                console.log("#sso.stateChanged: role: " + role);
+                $('#fileTable').DataTable().ajax.reload(null, false);
+                // Dropzone
+                if (role === 'teacher') {
+                    dzLabel("Drop file here to upload or click to select file from disk");
+                    dzActivate();
+                } else {
+                    dzLabel("Upload available only for teachers!");
+                    dzDeactivate();
+                }
+                //console.log("All registered handlers");
+                //console.log($._data($('form#dz-form').get(0), "events"));
+            });
+
+            // OnClick handler to close sandwich menu
+            $('.navbar-nav a').on('click', function(event) {
+                $('.navbar-collapse').collapse('hide');
+            });
+
+
+            /******************************************************************
+            //
+            //  Files owned by current authenticated user - DataTable
+            //
+            */
+            // Page accepts Query Parameter to filter the list/table
+            searchString = getUrlParameter('search');
+            var fileTable = $('#fileTable').DataTable( {
+                responsive:     true,
+                'ajax':         'api/file/owned',
+                'dataSrc':      'data',
+                'select':       true,
+                "lengthChange": false,  // No "show N entries" dropdown
+                "searching":    false,  // No search box
+                "paging":       false,  // No paging widgets
+                "info":         false,  // No lower left infor bit
+                "oSearch":  { "sSearch": searchString },
+                'columns':  [
+                    {'data': 'label'},
+                    {'data': 'version'},
+                    {'data': 'type'},
+                    {'data': 'created'}
+                ],
+                "columnDefs": [
+                    {
+                        "targets": 0,
+                        "render": function(data, type, row, meta) {
+                            // upload.js:openEditVMPage()
+                            // NOTE: openEditVMPage() has a TODO. See upload.js
+                            return '<a onClick="return openEditVMPage(' + row.id + ');">' + data + '</a>';
+                        },
+                        "className": "column-course"
+                    },
+                    {
+                        "targets": 2,
+                        "className": "text-center"
+                    }
+                ]
+            } );
+
+        }); /* $(document).ready() */
+    </script>
+
+
+
+</head>
+
+
+<body data-spy="scroll" data-target="#navbarContent" data-offset="70">
+
+    <div class="fixed-top navbar-container">
+        <nav class="navbar navbar-expand-md navbar-light bg-white py-0" style="width: 100%;">
+            <div class="container navbar-brand-container">
+                <a class="navbar-brand py-3" href="."><img id="navbar-logo" src="img/utu-torch-black.png"></a>
+                <span id="navbar-title">Manage</span>
+                <button class="navbar-toggler"
+                        type="button"
+                        data-toggle="collapse"
+                        data-target="#navbarContent">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="nav navbar-nav">
+                        <a class="nav-link p-3" href="#upload">Upload</a>
+                        <a class="nav-link p-3" Href="#publish">Your VMs</a>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <div id="sso"></div>
+    </div>
+
+
+
+
+    <!-- PAGE CONTENT -->
+    <div class="container-fluid">
+        <div class="row" id="content-row">
+            <main>
+
+
+                <nav class="site">
+                    <ol>
+                        <li><a href="index.html">UTU Virtual Machines</a></li>
+                        <li>Upload</li>
+                    </ol>
+                </nav>
+
+
+                <!-- Executive summary -->
+                <article style="display: none;"></article>
+
+
+
+                <!-- ARTICLE Upload image -->
+                <article>
+                    <h1 id="upload"><i class="fa fa-cloud-upload"></i>Upload</h1>
+                    <p>
+                        <form
+                            id="dz-form"
+                            enctype="multipart/form-data">
+                            <label>Upload available only for teachers!</label>
+                            <input type="file" accept=".ova, .img, .zip">
+                            <progress
+                                id="dz-progress-bar"
+                                max="100"
+                                value="0"
+                            ></progress>
+                            <div></div>
+                        </form>
+                    </p>
+                </article>
+
+
+
+
+                <!-- ARTICLE List of Images -->
+                <article>
+                    <h1 id="publish"><i class="	fa fa-bullhorn"></i>Your Virtual Machines</h1>
+                    <p>Click label to view and edit details.</p>
+                    <table  id="fileTable"
+                            class="dataTable table-striped nowrap display compact">
+                        <thead>
+                            <th class="all">Label</th>
+                            <th class="min-phone-l">Version</th>
+                            <th class="min-phone-l">Type</th>
+                            <th class="min-phone-l">Created</th>
+                        </thead>
+                    </table>
+                </article>
+
+
+
+            </main>
+        </div>
+    </div>
+    <!-- MAIN ENDS -->
+
+
+
+
+    <!-- FOOTER -------------------------------------------------------------->
+    <footer><!-- flex container -->
+        <div>
+            <img    class="footer-logo"
+                    src="img/UTU_logo-white_EN_transparent.png">
+        </div>
+        <div><!-- flex container -->
+            <div>
+                © <a href="https://www.utu.fi">University of Turku</a>,
+                <a href="https://tech.utu.fi/en/">Department of Future  Technologies</a> 2019<br>
+                Brought to you by the <a href="https://gitlab.utu.fi/soft/ftdev/wikis/home">Course virtualization team</a> @ <a href="https://tech.utu.fi/fi/software-engineering/">SwDev laboratory</a>.
+            </div>
+            <div>
+                <a href="documentation.html">Documentation</a>
+                <a href="#">Statistics</a>
+                <a href="privacy.html">Privacy</a>
+            </div>
+        </div>
+    </footer>
+
+
+</body>
+
+</html>

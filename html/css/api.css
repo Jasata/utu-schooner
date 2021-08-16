@@ -1,0 +1,51 @@
+html {
+    font-family:            sans-serif;
+}
+code
+{
+    background-color:       #ddd;
+}
+h1
+{
+    font-size:              1.7rem;
+}
+table
+{
+    border-collapse:        collapse;
+}
+table th
+{
+    border:                 1px solid Silver;
+    padding:                5px;
+    text-align:             left;
+}
+table td
+{
+    border:                 1px solid Silver;
+    padding:                5px;
+    vertical-align:         top;
+    text-align:             left;
+}
+/*** Generated API endpoint listing table *********************/
+table.endpointTable
+{
+    border-collapse:        collapse;
+    width:                  100%;
+}
+table.endpointTable tr:nth-child(even)
+{
+    background-color:       #f2f2f2;
+}
+table.endpointTable th
+{
+    background-color:       #606060;
+    color:                  white;
+    height:                 50px;
+    vertical-align:         bottom;
+}
+table.endpointTable td
+{
+    text-align:             left;
+    vertical-align:         top;
+    border:                 1px solid black;
+}

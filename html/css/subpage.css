@@ -1,0 +1,804 @@
+/* subpage.css - Turku University, Course Virtual Machine site
+   Styles shared among subpages
+   17.11.2019 // Jani Tammi <jasata@utu.fi>
+*/
+:root
+{
+    --navbar-padding:                   80px;
+    --tab-corner-radius:                10px;
+    --cardtabs-active-color:            var(--utu-purple-dark, Black);
+    --cardtabs-inactive-color:          #e2e2e2;
+    --cardtabs-border-color:            #e5e5e5;
+    --cardtabs-background-color:        White;
+}
+html
+{
+    scroll-behavior:                    smooth;
+}
+
+/********************************************************************
+ *
+ * Scrollspy-like navbar implementation
+ * ("page navigator")
+ */
+body
+/* hidden spacer before sections for proper offset */
+{
+    padding-top:                var(--navbar-padding);
+    overflow-y:                 auto;
+    /* Required by Bootstrap Scrollspy */
+    position:                   relative;
+}
+/* NOTE: Special article a:before {...} among 'article' selectors */
+a:link
+{
+    color:                      var(--link-color);
+    text-decoration:            none;
+}
+a:visited
+{
+    color:                      var(--link-color);
+    text-decoration:            none;
+}
+a:hover
+{
+    color:                      var(--text-color);
+    text-decoration:            underline dotted;
+}
+a:active
+{
+    color:                      var(--text-color);
+    text-decoration:            none;
+}
+details:not([class]) > p
+/* Plain vanilla <details> shall all have left padding in their P's */
+{
+    padding-left:               20px;
+}
+code
+{
+    font-family:                courier, courier new, serif;
+    color:                      Black;
+    background-color:           #ddd;
+    padding:                    2px;
+}
+
+/******************************************************************************
+ *
+ * Bootstrap navbar / scrollspy
+ */
+a.navbar-brand::before
+/* the "<<" before UTU logo */
+{
+    font-family:                FontAwesome;
+    font-size:                  30px;
+    content:                    "\f100";
+    display:                    inline-block;
+    padding-right:              5px;
+    vertical-align:             top;
+    font-weight:                500;
+}
+#navbar-logo
+/* ID for the UTU torch image */
+{
+    width:                  40px;
+}
+.navbar-light .navbar-nav .nav-link.active
+/* optional style active link */
+{
+    background-color:       var(--utu-purple);
+    font-weight:            bold;
+    color:                  White;
+    border-radius:          5px;
+}
+.navbar-container
+{
+    display:                flex;
+    align-items:            flex-start;
+    justify-content:        space-between;
+    background-color:       White;
+}
+.navbar-container:after
+{
+    content:                '';
+    width:                  100%;
+    height:                 10px;
+    left:                   0px;
+    bottom:                 0;
+    margin:                 0;
+    z-index:                -1;
+    position:               absolute;
+    -moz-box-shadow:        0px 5px 6px
+                            rgba(0,0,0,.3); /* FF3.5+ */
+    -webkit-box-shadow:     0px 5px 6px
+                            rgba(0,0,0,.3); /* Saf3.0+, Chrome */
+    box-shadow:             0px 5px 6px
+                            rgba(0,0,0,.3); /* Opera 10.5, IE 9.0 */
+}
+/* Class to overwrite (some) Bootstrap .container properties */
+.navbar-brand-container
+{
+    padding:                0 !important;
+    margin:                 0 !important;
+    width:                  100% !important;
+}
+@media (min-width: 576px)
+{
+    .container {
+        max-width:              none !important;
+    }
+}
+/******************************************************************************
+ *
+ * Site navigator
+ */
+nav.site
+{
+    border-bottom:          1px solid darkgrey;
+    font-size:              80%;
+}
+nav.site ol
+{
+    list-style-type:        none;
+    padding-left:           0;
+}
+nav.site ol li
+{
+    display:                inline-block;
+}
+nav.site ol li a
+{
+    font-weight:            normal;
+}
+nav.site ol li a::after
+{
+    display:                inline-block;
+    color:                  #000;
+    content:                '>';
+    padding:                0 3px;
+}
+/* Override boostrap .container left margin */
+nav#navbar > div.container
+{
+    margin-left:            0px;
+}
+span#navbar-title
+{
+    margin-right:           10px;
+    font-weight:            bolder;
+}
+
+
+/******************************************************************************
+ *
+ * Main / Section / Article -styling
+ */
+main
+{
+    margin:                 1.0rem;
+    width:                  100%;
+    min-height:             320px;
+    min-width:              var(--main-min-width);
+    background:             var(--content-bg-color);
+    flex:                   3 1 auto;
+    border-radius:          7px;
+    padding:                1.0rem;
+    -webkit-box-shadow:     0 10px 6px -6px #777;
+    -moz-box-shadow:        0 10px 6px -6px #777;
+    box-shadow:             0 10px 6px -6px #777;
+}
+@media only screen and (max-width: 600px)
+{
+    main
+    {
+        margin:                 0;
+    }
+}
+
+article
+{
+    margin-top:             10px;
+    margin-bottom:          40px;
+    max-width:              1280px;
+}
+/* This has most likely become obsolete long ago
+   Commented out 2019-12-12 // JTa
+article > header
+{
+    color:                  var(--utu-purple);
+    font-size:              2.25em;
+    font-weight:            bold;
+    font-weight:            700;
+    line-height:            1.2;
+    position:               relative;
+    padding-bottom:         .3em;
+    margin-top:             1em;
+    margin-bottom:          16px;
+    box-sizing:             border-box;
+    -webkit-tap-highlight-color: transparent;
+}*/
+article h1
+/* Any H1 enclosed in <article> */
+{
+    color:                  var(--utu-purple-dark);
+    font-size:              1.75em;
+    margin-bottom:          20px;
+}
+article > h1[id] > i
+/* Font Awesome icon in ID'd H1 headers needs a little padding.
+   This applies ONLY to immediate H1 child that is "id" attrinute! */
+{
+    padding-right:          6px;
+}
+article h2
+/* Any H2 enclosed in <article> */
+{
+    color:                  var(--utu-purple);
+    font-size:              1.4rem;
+    margin-bottom:          10px;
+}
+article details.subheader-h2 > summary
+/* Folding subheader of H2 type */
+{
+    color:                  var(--utu-purple);
+    font-size:              1.4rem;
+    margin-bottom:          10px;
+}
+article details.subheader-h2 > summary::after
+{
+    content:                "...";
+}
+article details.subheader-h2[open] > summary::after
+{
+    content:                "";
+}
+article h3
+/* Any H3 enclosed in <article> */
+{
+    color:                  Black;
+    font-size:              1.1rem !important; /* Boostrap is messing */
+    margin-bottom:          8px;
+}
+article > p
+{
+    padding-bottom:         0px;
+    margin-bottom:          14px;
+}
+article:first-of-type > p
+/* first section is the executive summary (aka. "abstract") */
+{
+    padding:                6px 30px 6px 30px;
+    font-style:             italic;
+}
+article > h1 /* ,h2,h3,h4,h5,h6 - just the <h1> for now */
+/* This sad hack exists because boostrap navbar does not have a configuration
+   item for scrolling offset. The data-offset ONLY adjust when the follow
+   highlight swaps to next navbar item... */
+{
+    padding-top:            90px;
+    margin-top:             -90px;
+    padding-bottom:         6px;
+}
+article a[href]::before
+{
+    font-family:                FontAwesome;
+    content:                    "\f0c1";
+    display:                    inline-block;
+    padding-right:              5px;
+    vertical-align:             top;
+    font-weight:                500;
+    color:                      var(--utu-purple);
+}
+article a[href$=".pdf"]::before
+{
+    font-family:                FontAwesome;
+    content:                    "\f1c1";
+    display:                    inline-block;
+    padding-right:              5px;
+    vertical-align:             top;
+    font-weight:                500;
+    color:                      var(--utu-purple);
+}
+article a[href$=".doc"]::before,
+article a[href$=".docx"]::before
+{
+    font-family:                FontAwesome;
+    content:                    "\f1c2";
+    display:                    inline-block;
+    padding-right:              5px;
+    vertical-align:             top;
+    font-weight:                500;
+    color:                      var(--utu-purple);
+}
+article a[href$=".zip"]::before
+{
+    font-family:                FontAwesome;
+    content:                    "\f1c6";
+    display:                    inline-block;
+    padding-right:              5px;
+    vertical-align:             top;
+    font-weight:                500;
+    color:                      var(--utu-purple);
+}
+article a[href$=".ova"]::before
+{
+    font-family:                FontAwesome;
+    font-size:                  1.1em;
+    content:                    "\f019"; /* "\f0a0"; */
+    display:                    inline-block;
+    padding-right:              5px;
+    vertical-align:             top;
+    font-weight:                500;
+    color:                      var(--utu-purple);
+}
+article a[href^="mailto:"]::before
+{
+    font-family:                FontAwesome;
+    content:                    "\f0e0";
+    display:                    inline-block;
+    padding-right:              5px;
+    vertical-align:             top;
+    font-weight:                500;
+    color:                      var(--utu-purple);
+}
+/*
+a[href^="/"]::before, a[href^=".."]::before
+/* internal relative link * /
+{
+    font-family:                FontAwesome;
+    content:                    "\f???";
+    display:                    inline-block;
+    padding-right:              3px;
+    vertical-align:             top;
+    font-weight:                500;
+    color:                      var(--utu-purple);
+}
+*/
+
+article img.left
+{
+    display:                    block;
+    float:                      right;
+    width:                      40%;
+    min-width:                  340px;
+    height:                     auto;
+}
+
+@media 
+only screen and (max-width: 700px),
+(min-device-width: 768px) and (max-device-width: 1024px)
+{
+    article img.left
+    {
+        float:                      none;
+        width:                      100%;
+    }
+}
+
+/***********************************************************************
+ *
+ * SHOWME (<details><summary> - HTML5 Widget)
+ */
+details.showme
+{
+    margin:                 0;
+    border:                 1px solid Silver;
+    border-top:             none;
+    border-right:           none;
+    margin-bottom:          8px;
+}
+details.showme > *:not(summary)
+{
+    margin-left:            1em;
+}
+details.showme > p
+{
+    margin-left:            2em;
+}
+details.showme > summary
+{
+    /* Disable the annoying outline box over summary */
+    outline:                none;
+    /* Just in case that the "+" is not strong enough hint ... */
+    color:                  var(--utu-purple);
+}
+/*
+ * Hide the ugly default triagle shape
+ */
+details.showme > summary::marker
+/* Standard way, but works in no-browser... */
+{
+    display:                none;
+}
+details.showme > summary:first-of-type
+/* for Firefox... */
+{
+    list-style-type:        none;
+}
+details.showme > summary::-webkit-details-marker
+/* for Chrome... */
+{
+    display:                 none;
+}
+/*
+ * Prefix with + / - signs
+ */
+details.showme > summary:after
+/* An eye icon */
+{
+    font-family:                FontAwesome;
+    content:                    "\f06e";
+    float:                      left;
+    padding:                    0;
+    text-align:                 center;
+    transform:                  translate(0, -1px);
+    width:                      24px;
+}
+details[open].showme > summary:after
+{
+    content:                    "\f070";
+}
+
+
+/****************************************************************************/
+/* Tabs CSS
+ * using: https://webdevtrick.com/pure-css-tabs-responsive/
+*/
+.tabs
+{
+    display:                flex;
+    flex-wrap:              wrap;
+}
+.tabs label
+{
+    order:                  1;
+    display:                block;
+    padding:                0.7rem 2rem;
+    margin-right:           0.2rem;
+    margin-bottom:          0;
+    cursor:                 pointer;
+    background:             Silver;
+    font-weight:            bold;
+    transition:             background ease 0.4s;
+    border-radius:          var(--tab-corner-radius)
+                            var(--tab-corner-radius)
+                            0px
+                            0px;
+}
+.tabs .tab
+/* tab content */
+{
+    order:                  99;
+    flex-grow:              1;
+    width:                  100%;
+    display:                none;
+    padding:                0.8rem;
+    background:             var(--content-bg-color);
+    border-top:             1px solid Silver;
+    box-shadow:             0 2px 6px rgba(0,0,0,0.12),
+                            0 3px 6px rgba(0,0,0,0.24);
+}
+.tabs .tab:first-child
+{
+    color: Red;
+    margin-left: 10px;
+    font-size: 3.0em;
+}
+.tabs input[type="radio"]
+{
+    display:                none;
+}
+.tabs input[type="radio"]:checked + label
+{
+    color:                  White;
+    background:             var(--utu-purple);
+    border-radius:          var(--tab-corner-radius)
+                            var(--tab-corner-radius)
+                            0px
+                            0px;
+}
+.tabs input[type="radio"]:checked + label + .tab
+{
+    display:                block;
+}
+
+@media (max-width: 47em)
+{
+    .tabs .tab
+    /* tab content */
+    {
+        padding:                0.8rem;
+        /* lower edge effect */
+        border:                 0;
+        border-bottom:          var(--tab-corner-radius) solid var(--utu-purple);
+        border-radius:          0px
+                                0px
+                                var(--tab-corner-radius)
+                                var(--tab-corner-radius);
+    }
+    .tabs .tab,
+    .tabs label
+    {
+        order:                  initial;
+        border-radius:          var(--tab-corner-radius);
+    }
+    .tabs label
+    {
+        width:                  100%;
+        margin-right:           0;
+        margin-top:             0.2rem;
+    }
+    .tabs input[type="radio"]:checked + label
+    {
+        border-radius:          var(--tab-corner-radius)
+                                var(--tab-corner-radius)
+                                0px
+                                0px;
+    }
+}
+
+
+
+/******************************************************************************
+ *
+ *  Responsive data table
+ *  https://css-tricks.com/responsive-data-tables/
+ *  https://elvery.net/demo/responsive-tables/
+ */
+table.responsive
+{
+    width:                      100%;
+    max-width:                  1000px;
+    border-collapse:            collapse;
+}
+table.responsive th
+{
+    background:                 var(--utu-purple-dark);
+    color:                      White;
+    font-weight:                bold;
+    height:                     40px;
+}
+table.responsive td
+/* lines between rows */
+{
+    border-bottom:              1px solid #ccc;
+}
+table.responsive th,
+table.responsive td
+/* Basic padding */
+{
+    padding-right:              4px;
+    padding-left:               6px;
+}
+table.responsive tr:nth-of-type(even)
+{
+    background:                 #eee;
+}
+/* Table footnotes */
+table.responsive sup
+{
+    font-size:                  0.6em;
+}
+table.responsive + ol
+{
+    font-size:                  0.7em;
+}
+/* Responsiveness by media query */
+@media 
+only screen and (max-width: 760px),
+(min-device-width: 768px) and (max-device-width: 1024px)
+{
+    table.responsive,
+    table.responsive thead,
+    table.responsive tbody,
+    table.responsive th,
+    table.responsive td,
+    table.responsive tr
+    /* Force table to not be like tables anymore */
+    {
+        display:                    block;
+    }
+    table.responsive thead,
+    table.responsive thead th
+    /* Hide table headers (but not display: none;, for accessibility) */
+    {
+        position:                   absolute;
+        top:                        -9999px;
+        left:                       -9999px;
+    }
+    table.responsive tr
+    {
+        border:                     1px solid #ccc;
+    }
+    table.responsive td
+    /* Behave  like a "row" */
+    {
+        border:                     none;
+        border-bottom:              1px solid #ccc;
+        position:                   relative;
+        padding-left:               50%;
+        white-space:                normal;
+        text-align:                 left;
+    }
+    table.responsive td:before
+    /* Now like a table header */
+    { 
+        position:                   absolute;
+        /* Top/left values mimic padding */
+        top:                        1px;
+        left:                       6px;
+        width:                      45%;
+        padding-right:              10px;
+        white-space:                nowrap;
+        font-weight:                600; /* semi-bold value */
+        /* <td label="my text"> */
+        content:                    attr(label);
+    }
+}
+
+
+/***********************************************************************
+ * important note box
+ */
+div.shoutbox
+{
+    border:                     1px solid #888;
+    border-radius:              7px;
+    padding:                    1.0rem;
+    -webkit-box-shadow:         0 10px 6px -6px #777;
+    -moz-box-shadow:            0 10px 6px -6px #777;
+    box-shadow:                 0 10px 6px -6px #777;
+    margin-bottom:              16px;
+    display:                    table;
+}
+div.shoutbox > *
+{
+    display:                    table-cell;
+    vertical-align:             middle;
+}
+div.shoutbox > i:first-child
+{
+    font-size:                  2rem;
+    color:                      var(--utu-purple);
+    vertical-align:             middle;
+    padding:                    0 16px 0 2px;
+}
+
+
+/***********************************************************************
+ * Quote someone 
+ */
+
+blockquote.testimonial
+{
+    position:                   relative;
+    display:                    inline-block;
+    background:                 #eee;
+    padding:                    40px 30px 30px 60px;
+    border-radius:              10px;
+    color:                      #333;
+    text-align:                 justify; /* left; */
+    box-shadow:                 1px 1px 1px #999,
+                                2px 2px 1px #999,
+                                3px 3px 1px #999;
+    transition-duration:        0.3s;
+}
+blockquote.testimonial span.author
+{
+    position:                   relative;
+    display:                    block;
+    text-align:                 right;
+    margin-top:                 5px;
+    color:                      #999;
+}
+blockquote.testimonial span.author i
+{
+    position:                   relative;
+    background:                 #eee;
+    padding-left:               5px;
+    font-style:                 italic;
+    z-index:                    5;
+}
+blockquote.testimonial span.author::before
+{
+    display:                    block;
+    content:                    "";
+    position:                   absolute;
+    top:                        50%;
+    left:                       0;
+    width:                      100%;
+    height:                     1px;
+    background:                 #ccc;
+    z-index:                    1;
+}
+blockquote.testimonial:hover
+{
+    box-shadow:                 1px 1px 5px #999,
+                                2px 2px 6px #999,
+                                3px 3px 7px #999;
+}
+blockquote.testimonial::before
+/* Stylish quotation mark */
+{
+    display:                    block;
+    position:                   absolute;
+    top:                        10px;
+    left:                       10px;
+    transform:                  translate(0, -10px);
+    font-family:                FontAwesome;
+    font-size:                  40px;
+    content:                    "\f10e";
+    color:                       #999;
+    float:                      left;
+    padding:                    0;
+    text-shadow:                4px 4px 4px #ccc;
+}
+
+/***********************************************************************
+ * CSS Grid for columns
+ */
+@supports (display: grid)
+{
+    .three-columns
+    {
+        margin:                     0;
+        display:                    grid;
+        grid-template-columns:      repeat(
+                                        auto-fit,
+                                        minmax(300px, 1fr)
+                                    );
+        grid-gap:                   1rem;
+    }
+}
+
+
+
+/*** CardTabs / UTU Style **************************************************/ 
+/***************************************************************************/ 
+/*
+Expects variables:
+    --cardtabs-active-color:            Top of the active tab control
+    --cardtabs-inactive-color:          inactive tab color
+    --cardtabs-border-color:            The thin border around content
+    --cardtabs-background-color:        Content background color
+*/
+div.card-tabs-bar.utu
+/* The thin line under tabs, above content */
+{
+    border-bottom:                      1px solid
+                                        var(--cardtabs-border-color, #e5e5e5);
+}
+div.card-tabs-bar.utu a
+{
+    padding:                            15px;
+    border-radius:                      0px;
+    margin:                             0;
+    padding-bottom:                     10px;
+    margin-bottom:                      -2px;
+    font-size:                          17px;
+}
+div.card-tabs-bar.utu a
+/* constitutes as "inactive", because the class below sets "active" */
+{
+    background-color:                   var(--cardtabs-inactive-color, #e2e2e2);
+}
+div.card-tabs-bar.utu a::before
+{
+    content:                            none;
+}
+div.card-tabs-bar.utu a.active
+{
+    background-color:                   var(--cardtabs-background-color, White);
+    border-top:                         4px solid
+                                        var(--cardtabs-active-color, Black);
+}
+div.card-tabs-stack.utu div[data-tab]
+{
+    padding:                            10px;
+    background-color:                   var(--cardtabs-background-color, White);
+    border:                             1px solid
+                                        var(--cardtabs-border-color, #e5e5e5);
+    border-top:                         none;
+}
+
+/* EOF */

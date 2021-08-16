@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta   charset="utf-8">
+    <meta   name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta   name="description"
+            content="">
+    <meta   name="author"
+            content="jasata@utu.fi">
+
+    <title>Turku university - Course Virtual Machines</title>
+
+    <link rel="stylesheet" href="css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/subpage.css">
+    <link rel="stylesheet" href="css/sso.css">
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/sso.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize SSO element
+            $("#sso").sso();
+            // Close sandwich-menu click
+            $('.navbar-nav a').on('click', function() {
+                $('.navbar-collapse').collapse('hide');
+            });
+        });
+    </script>
+
+
+</head>
+
+
+<body data-spy="scroll" data-target="#navbarContent" data-offset="70">
+
+    <nav class="navbar navbar-expand-md fixed-top navbar-light bg-white py-0">
+        <div class="container">
+            <a class="navbar-brand py-3" href=".">
+                <img id="navbar-logo" src="img/utu-torch-black.png">
+            </a><span id="navbar-title">Documentation</span>
+            <button class="navbar-toggler"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="nav navbar-nav">
+                    <!--
+                    <a class="nav-link p-3" href="#documents">Documents</a>
+                    <a class="nav-link p-3" href="#teacher">Teachers</a>
+                    <a class="nav-link p-3" href="#technical">Technical</a>
+                    -->
+                </ul>
+            </div>
+            <div id="sso"></div>
+        </div>
+    </nav>
+
+
+
+
+
+    <!-- PAGE CONTENT -->
+    <div class="container-fluid">
+        <div class="row" id="content-row">
+            <main>
+
+
+                <nav class="site">
+                    <ol>
+                        <li><a href="index.html">UTU Virtual Machines</a></li>
+                        <li>Documentation</li>
+                    </ol>
+                </nav>
+
+
+                <!-- Executive summary -->
+                <article>
+                    <p>Here you can find documentation about course virtualization project - for using, creating and documents of more technical type.</p>
+                </article>
+
+
+                <!-- ARCILE DOCUMENTS -->
+                <article>
+                    <h1 id="docs"><i class="fa fa-book"></i>Documents</h1>
+                    <p>
+                        <a href="document/designddocument.pdf">Design Document</a><br />
+                        <!--
+                        <a href="document/using_vm.docx">doc 2</a><br/>
+                        <a href="document/repairkit.zip">doc 3</a>
+                        -->
+                    </p>
+                </article>
+                <!-- ARCILE DOCUMENTS -->
+
+
+            </main>
+        </div>
+    </div>
+    <!-- MAIN ENDS -->
+
+
+
+    <!-- FOOTER -------------------------------------------------------------->
+    <footer><!-- flex container -->
+        <div>
+            <img    class="footer-logo"
+                    src="img/UTU_logo-white_EN_transparent.png">
+        </div>
+        <div><!-- flex container -->
+            <div>
+                © <a href="https://www.utu.fi">University of Turku</a>,
+                <a href="https://tech.utu.fi/en/">Department of Future  Technologies</a> 2019<br>
+                Brought to you by the <a href="https://gitlab.utu.fi/soft/ftdev/wikis/home">Course virtualization team</a> @ <a href="https://tech.utu.fi/fi/software-engineering/">SwDev laboratory</a>.
+            </div>
+            <div>
+                <a href="documentation.html">Documentation</a>
+                <a href="#">Statistics</a>
+                <a href="privacy.html">Privacy</a>
+            </div>
+        </div>
+    </footer>
+
+
+</body>
+
+</html>

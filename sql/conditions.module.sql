@@ -1,0 +1,8 @@
+--
+-- Schooner - Simple Course Management System
+-- conditions.module.sql / Rules and conditions for course completion
+-- University of Turku / Faculty of Technology / Department of Computing
+-- Jani Tammi <jasata@utu.fi>
+--
+--  2021-08-13  PLACEHOLDER (not yet started).
+--

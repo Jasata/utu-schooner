@@ -1,0 +1,137 @@
+/*
+ * download.css - Jani Tammi <jasata@utu.fi>
+ */
+:root
+{
+    --unused:                       White;
+}
+
+/*** DataTables **************************************************************
+ *
+ *  Site specific CSS for DataTables
+ */
+.downloads
+{
+    width:                          100% !important;
+}
+.downloads > thead
+{
+    background-color:               var(--utu-purple);
+    color:                          White;
+}
+.downloads td
+{
+    border-bottom:                  1px solid #ccc;
+}
+/* This cheeky little fuck drops out of my enclosing <p> element!! */
+#vm_table_wrapper, #usb_table_wrapper
+/* ...so, this is how we do this now... */
+{
+    margin-bottom:                  20px;
+}
+
+/* Make dtr-data look really nice (render whitespaces) */
+span.dtr-data {
+    white-space:                    pre-wrap;
+}
+
+/*** Override softing indicator style ***************************/
+table.dataTable thead th
+{
+    position:                       relative;
+    background-image:               none !important;
+}
+ 
+table.dataTable thead th.sorting:after,
+table.dataTable thead th.sorting_asc:after,
+table.dataTable thead th.sorting_desc:after
+{
+    position:                       absolute;
+    top:                            12px;
+    right:                          8px;
+    display:                        block;
+    font-family:                    FontAwesome;
+}
+table.dataTable thead th.sorting:after {
+    content:                        "\f0dc";
+    color:                          #ddd;
+    font-size:                      0.8em;
+    padding-top:                    0.12em;
+    padding-left:                   0.8em;
+}
+table.dataTable thead th.sorting_asc:after {
+    content:                        "\f0de";
+}
+table.dataTable thead th.sorting_desc:after {
+    content:                        "\f0dd";
+}
+/*** Override Child Row Button style *****************************************/
+table.dataTable.dtr-inline.collapsed > tbody > tr[role="row"] > td:first-child:before, table.dataTable.dtr-inline.collapsed > tbody > tr[role="row"] > th:first-child:before
+{
+    top:                            12px;
+    left:                           4px;
+    height:                         14px;
+    width:                          14px;
+    display:                        block;
+    position:                       absolute;
+    color:                          var(--utu-purple-dark);
+    font-family:                    FontAwesome;
+    font-size:                      1.4em;
+    content:                         "\f0da";
+
+    border:                         none;
+    border-radius:                  0;
+    box-shadow:                     none;
+    box-sizing:                     content-box;
+    text-align:                     center;
+    text-indent:                    0 !important;
+    line-height:                    14px;
+    background-color:               inherit;
+}
+table.dataTable.dtr-inline.collapsed > tbody > tr.parent > td:first-child:before, table.dataTable.dtr-inline.collapsed > tbody > tr.parent > th:first-child:before {
+    content:                        "\f0d7";
+    background-color:               inherit;
+}
+
+/* _length .. _filter / UNSATISFACTORY SOLUTION - length "jumps" out of line * /
+#vm_table_length {float:left;}
+#vm_table_filter {float:right;}
+/* */
+
+/*** Column -specific styles *************************************************/
+.column-course
+{
+    font-weight:                    500;
+}
+
+/*** DETAILS - Hypervisor specific steps **************************************
+ *
+ *  Expanding element (<details>) for hypervisor specifics
+ *  2019-12-12 Fixed DETAILS selectors to limit only to non-classed tags
+ */
+div[data-tab] > details:not([class])
+{
+    margin-bottom:                  10px;
+}
+div[data-tab] > details:not([class]) > summary
+{
+    outline:                        none;
+    padding-left:                   6px;
+    background-color:               Silver;
+    font-size:                      1.2rem;
+    font-weight:                    bold;
+    color:                          White;
+}
+div[data-tab] > details:not([class]) > summary:hover
+{
+    background-color:               var(--utu-purple);
+    -webkit-transition:             0.6s ease-out;
+    -moz-transition:                0.6s ease-out;
+    -o-transition:                  0.6s ease-out;
+    transition:                     0.6s ease-out;
+}
+div[data-tab] > details[open]:not([class]) > summary
+{
+    background-color:               var(--utu-purple);
+}
+

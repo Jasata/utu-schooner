@@ -1,0 +1,14 @@
+# Schooner - Course Management System
+# University of Turku / Faculty of Technilogy / Department of Computing
+# (c) 2021, Jani Tammi <jasata@utu.fi>
+# APIVERSION - REST API Version Number
+#
+#   2021-08-07  Version 1.
+#
+# This file may contain ONLY one single non-comment line.
+# That row can have only one integer number, which represents
+# the version number of the REST JSON API.
+#
+# 
+
+1

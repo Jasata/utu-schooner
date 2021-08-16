@@ -1,0 +1,185 @@
+/*
+ * box-sizing "magic"
+ * https://developer.mozilla.org/en-US/docs/Web/CSS/box-sizing
+ * Without this, inner element's borders and paddings screw up sizing.
+ */
+*
+{
+  -webkit-box-sizing:           border-box;
+  -moz-box-sizing:              border-box;
+  box-sizing:                   border-box;
+}
+
+/*** Boostrap.css overrides **************************************************/
+
+fieldset
+{
+  padding:                      6px;
+  border:                       1px solid silver;
+}
+legend
+{
+  width:                        auto;
+  font-size:                    1.2rem;
+}
+
+select#filelist
+{
+  height:                       80px;
+  width:                        100%;
+  overflow:                     hidden;
+}
+
+/*** subpage.css overrides ***************************************************/
+article > h1
+/* padding 90px and margin -90px is a hack for Bootstrap navbar that does not
+   have a scroll offset setting. ...but it masks the DropZone FORM in this page
+   and it has to go! */
+{
+  padding-top:                  0;
+  margin-top:                   0;
+}
+
+
+/*** File DropZone ***********************************************************/
+/* https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/ */
+form#dz-form
+{
+  border:                       2px dashed #ccc;
+  border-radius:                20px;
+  width:                        100%;
+  margin:                       10px 100px 30px 100px auto;
+  padding:                      20px;
+}
+form#dz-form.highlight
+{
+  border-color:                 rgb(160, 160, 160);
+  background-color:             #ececec;
+}
+form#dz-form input[type=file]
+/* INPUT TYPE="file" is a dinosaur - ugly beyond description and lacking all
+   modern styling options (namely, ability to hide the fugly "Browse" button).
+   DO NOT try to work with this element! Just set it to display: none; and
+   create what you need in other ways.
+  display: none;        does not allocate space
+  visibility: hidden;   space allocated, not rendered, no events captured
+  opacity: 0;           space allocated, transparent, captures events
+*/
+{
+  display:                      none;
+}
+#dz-progress-bar
+{
+  height:                       60px;
+  width:                        100%;
+  visibility:                   hidden;
+}
+/* DropZone text/message display elements */
+#dz-form > label
+{
+  width:                        100%;
+  font-size:                    35px;
+  font-weight:                  Bold;
+  color:                        rgb(210, 210, 210);
+  /* text-align:                   center; */
+}
+#dz-form > div
+{
+  width:                        100%;
+  font-size:                    18px;
+}
+
+
+/*** DataTables **************************************************************
+ *
+ *  Site specific CSS for DataTables
+ */
+ .downloads
+ {
+     width:                          100% !important;
+ }
+ .downloads > thead
+ {
+     background-color:               var(--utu-purple);
+     color:                          White;
+ }
+ .downloads td
+ {
+     border-bottom:                  1px solid #ccc;
+ }
+ /* This cheeky little fuck drops out of my enclosing <p> element!! */
+ #vm_table_wrapper, #usb_table_wrapper
+ /* ...so, this is how we do this now... */
+ {
+     margin-bottom:                  20px;
+ }
+ 
+ /*** Override softing indicator style ***************************/
+ table.dataTable thead th
+ {
+     position:                       relative;
+     background-image:               none !important;
+ }
+  
+ table.dataTable thead th.sorting:after,
+ table.dataTable thead th.sorting_asc:after,
+ table.dataTable thead th.sorting_desc:after
+ {
+     position:                       absolute;
+     top:                            12px;
+     right:                          8px;
+     display:                        block;
+     font-family:                    FontAwesome;
+ }
+ table.dataTable thead th.sorting:after {
+     content:                        "\f0dc";
+     color:                          #ddd;
+     font-size:                      0.8em;
+     padding-top:                    0.12em;
+     padding-left:                   0.8em;
+ }
+ table.dataTable thead th.sorting_asc:after {
+     content:                        "\f0de";
+ }
+ table.dataTable thead th.sorting_desc:after {
+     content:                        "\f0dd";
+ }
+ /*** Override Child Row Button style *****************************************/
+ table.dataTable.dtr-inline.collapsed > tbody > tr[role="row"] > td:first-child:before, table.dataTable.dtr-inline.collapsed > tbody > tr[role="row"] > th:first-child:before
+ {
+     top:                            12px;
+     left:                           4px;
+     height:                         14px;
+     width:                          14px;
+     display:                        block;
+     position:                       absolute;
+     color:                          var(--utu-purple-dark);
+     font-family:                    FontAwesome;
+     font-size:                      1.4em;
+     content:                         "\f0da";
+ 
+     border:                         none;
+     border-radius:                  0;
+     box-shadow:                     none;
+     box-sizing:                     content-box;
+     text-align:                     center;
+     text-indent:                    0 !important;
+     line-height:                    14px;
+     background-color:               inherit;
+ }
+ table.dataTable.dtr-inline.collapsed > tbody > tr.parent > td:first-child:before, table.dataTable.dtr-inline.collapsed > tbody > tr.parent > th:first-child:before {
+     content:                        "\f0d7";
+     background-color:               inherit;
+ }
+ 
+ /* _length .. _filter / UNSATISFACTORY SOLUTION - length "jumps" out of line * /
+ #vm_table_length {float:left;}
+ #vm_table_filter {float:right;}
+ /* */
+ 
+ /*** Column -specific styles *************************************************/
+ .column-course
+ {
+     font-weight:                    500;
+ }
+ 

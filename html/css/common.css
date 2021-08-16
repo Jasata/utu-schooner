@@ -1,0 +1,235 @@
+/* common.css - Turku University, Course Virtual Machine site
+ * 10.11.2019 // Jani Tammi <jasata@utu.fi>
+ * Style common to whole site. Include also "index.css" for "index.html" or
+ * "subpage.css" for all other pages.
+ */
+:root
+{
+    --utu-purple:           #8b5dcb;
+    --utu-purple-dark:      #644494;
+    --page-bg-color:        #f2f2f2;
+    --text-color:           Black;
+    --link-color:           var(--utu-purple);
+    --content-bg-color:     White;
+    --header-bg-color:      White;
+    --footer-link-color:    var(--utu-purple);
+    --footer-bg-color:      Black;
+    --footer-height:        5.5vw;
+    --footer-sm-height:     70px;
+}
+
+/* page basics ***************************************************************/
+html
+{
+    font-family:            Verdana, Geneva, Tahoma, sans-serif;
+    position:               relative;
+    min-height:             100%;
+}
+body
+{
+    background-color:       var(--page-bg-color);
+
+    margin:                 0;
+    padding:                0;
+    /* Allow footer to stay at the bottom by making the page
+       as tall as the view port */
+    min-height:             100vh;
+    /* Reserve space for footer, so that our content will not
+       go underneath it */
+    padding-bottom:         calc(var(--footer-height) + 2.0rem);
+}
+details > summary
+/* Every details type and style, remove the ouline box */
+{
+    outline:                none;
+}
+
+/* Page basics END ***********************************************************/
+
+
+
+
+/******************************************************************************
+ *
+ * Footer style
+ * https://css-tricks.com/snippets/css/a-guide-to-flexbox/
+ * flex:  shorthand for flex-grow, flex-shrink and flex-basis
+ *        Default is 0 1 auto.
+ */
+footer
+{
+    position:               absolute;
+    bottom:                 0;
+    width:                  100%;
+    height:                 var(--footer-height);
+    background-color:       var(--footer-bg-color);
+    /* Flex container */
+    display:                flex;
+    flex-direction:         row;
+    flex-wrap:              nowrap;
+    justify-content:        flex-start;
+    align-items:            baseline;
+    align-content:          center;
+}
+footer > div:nth-child(1)
+/* UTU logo flex-item */
+{
+    order:                  0;
+    flex:                   0 0 auto;
+    width:                  auto;
+    height:                 var(--footer-height);
+    max-height:             var(--footer-height);
+}
+footer > div:nth-child(1) > img
+/* UTU logo image */
+{
+    width:                  auto;
+    height:                 var(--footer-height);
+    max-height:             var(--footer-height);
+}
+footer > div:nth-child(2)
+/* Flex container for links and copyright text */
+{
+    order:                  2;
+    flex:                   1 0 auto;
+    display:                flex;
+    flex-direction:         row;
+    flex-wrap:              nowrap;
+    justify-content:        space-between;
+    align-items:            baseline;
+    align-content:          center;
+}
+footer > div:nth-child(2) > div:nth-child(1)
+/* Copyright text flex-item */
+{
+    order:                  1;
+    flex:                   1 0 auto;
+    font-size:              1.1vw;
+    color:                  White;
+}
+footer > div:nth-child(2) > div:nth-child(1) > a:link
+{
+    color:                  White;
+    text-decoration:        none;
+}
+footer > div:nth-child(2) > div:nth-child(1) > a:visited
+{
+    color:                  White;
+    text-decoration:        none;
+}
+footer > div:nth-child(2) > div:nth-child(1) > a:hover
+{
+    color:                  var(--utu-purple);
+    text-decoration:        none;
+}
+footer > div:nth-child(2) > div:nth-child(1) > a:active
+{
+    color:                  White;
+    text-decoration:        none;
+}
+footer > div:nth-child(2) > div:nth-child(2) 
+/* Footer links flex-item */
+{
+    order:                  2;
+    flex:                   1 1 auto;
+    display:                -webkit-box;
+    display:                -ms-flexbox;
+    display:                flex;
+    -webkit-box-align:      center;
+    -ms-flex-align:         center;
+    align-items:            center;
+    -webkit-box-pack:       center;
+    -ms-flex-pack:          center;
+    justify-content:        center;
+}
+footer > div:nth-child(2) > div:nth-child(2) > a
+{
+    text-decoration:        none;
+    color:                  var(--footer-link-color);
+    font-size:              1.6vw;
+    font-weight:            bold;
+    margin-right:           0.3vw;
+    margin-left:            0.3vw;
+}
+footer > div:nth-child(2) > div:nth-child(2) > a:after
+{
+    content:                " | ";
+}
+footer > div:nth-child(2) > div:nth-child(2) > a:first-child:before
+{
+    content:                " ";
+}
+footer > div:nth-child(2) > div:nth-child(2) > a:last-child:after
+{
+    content:                "";
+}
+
+
+
+@media only screen and (max-width: 767px)
+{
+    footer
+    {
+        height:                 var(--footer-sm-height);
+        align-items:            stretch;
+    }
+    footer > div:nth-child(1)
+    {
+        height:                 var(--footer-sm-height);
+        min-height:             var(--footer-sm-height);
+    }
+    footer > div:nth-child(1) > img
+    {
+        height:                 var(--footer-sm-height);
+        min-height:             var(--footer-sm-height);
+    }
+    footer > div:nth-child(2)
+    {
+        flex:                   1 1 auto;
+        flex-wrap:              nowrap;
+        flex-direction:         column;
+        justify-content:        space-between;
+        align-content:          stretch;
+        align-items:            stretch;
+    }
+    footer > div:nth-child(2) > div:nth-child(1)
+    {
+        order:                  1;
+        font-size:              0.6em;
+        flex:                   1 1 auto;
+        padding-top:            4px;
+    }
+    footer > div:nth-child(2) > div:nth-child(2)
+    {
+        order:                  0;
+        flex:                   1 1 auto;
+    }
+    footer > div:nth-child(2) > div:nth-child(2) > a
+    {
+        font-size:              1.0em;
+        margin-right:           0.2em;
+        margin-left:            0.3em;
+    }
+
+}
+
+@media only screen and (max-width: 500px)
+{
+    footer > div:nth-child(1) > img
+    {
+        display:                none;
+    }
+    footer > div:nth-child(2) > div:nth-child(1)
+    {
+        display:                none;
+    }
+    footer > div:nth-child(2) > div:nth-child(2) > a
+    {
+        font-size:              0.9em;
+        margin-right:           0.2em;
+        margin-left:            0.3em;
+    }
+}
+
+
+/* EOF */
