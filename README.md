@@ -46,7 +46,7 @@ Frontend
 Backend
 - Nginx ver.1.14.0+
 - Python 3.6.8+ (Ubuntu Server 18.04.3 LTS, offered by IT-Services)
-- Flask 0.12.2+ (2017-05-16!! Current version: 1.1.2)
+- Flask 1.1.1+ (2021-08-16, version: 2.0.1 is the newest)
 - UWSGI 2.0.15+
-- SQLite3 3.22.0+ (2018-01-22)
-
+- PostgreSQL 11.12+
+- Psycopg3 dev2 (will be updated to release version, when it is released)
