@@ -5,17 +5,45 @@
 -- Jani Tammi <jasata@utu.fi>
 --
 --  2021-08-13  Initial version.
+--  2021-08-17  Admin ('postgres') parts only.
 --
+-- Execute as 'postgres'
 
+CREATE USER schooner WITH
+NOSUPERUSER
+NOCREATEDB
+NOCREATEROLE
+NOREPLICATION
+NOBYPASSRLS
+INHERIT
+LOGIN
+PASSWORD NULL;
 
---
---  2021-08-13  Initial structure.
---  2021-08-08  Redesign for simplicity and improved readability.
---
-CREATE DATABASE schooner;
-CREATE ROLE schooner;
-GRANT ALL PRIVILEGES ON DATABASE schooner TO schooner;
+CREATE USER "www-data" WITH
+NOSUPERUSER
+NOCREATEDB
+NOCREATEROLE
+NOREPLICATION
+NOBYPASSRLS
+INHERIT
+LOGIN
+PASSWORD NULL;
 
+CREATE DATABASE schooner WITH OWNER = schooner;
 
--- https://www.postgresql.org/docs/9.1/datatype-enum.html
-CREATE TYPE active_t AS ENUM ('active', 'inactive');
+COMMENT ON DATABASE schooner IS
+'Schooner - Simple course management system';
+
+GRANT CONNECT ON DATABASE schooner TO "www-data";
+
+-- Developer role
+CREATE ROLE schooner_dev WITH
+NOSUPERUSER
+NOCREATEDB
+NOCREATEROLE
+NOREPLICATION
+NOBYPASSRLS
+INHERIT
+PASSWORD NULL;
+
+-- EOF

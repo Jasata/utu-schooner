@@ -5,7 +5,12 @@
 -- Jani Tammi <jasata@utu.fi>
 --
 --  2021-08-13  Initial version.
+--  2021-08-17  Updated.
 --
+-- Execute as 'schooner' (for ownership)
+
+-- https://www.postgresql.org/docs/9.1/datatype-enum.html
+CREATE TYPE active_t AS ENUM ('active', 'inactive');
 
 --
 -- Grading systems
@@ -15,6 +20,8 @@ CREATE TABLE gradesys
     gradesys_id         VARCHAR(8)      NOT NULL PRIMARY KEY,
     name                VARCHAR(64)     NOT NULL
 );
+GRANT ALL PRIVILEGES ON gradesys TO schooner_dev;
+GRANT SELECT ON gradesys TO "www-data";
 
 COMMENT ON TABLE gradesys IS
 'Grading systems by name. See gradesys_criteria table for associated marks and required score percentages.';
@@ -38,6 +45,8 @@ CREATE TABLE gradesys_criteria
     CONSTRAINT grade_system_mark_unq
         UNIQUE (gradesys_id, mark)
 );
+GRANT ALL PRIVILEGES ON gradesys_criteria TO schooner_dev;
+GRANT SELECT ON gradesys_criteria TO "www-data";
 
 COMMENT ON TABLE gradesys_criteria IS
 'Note that fail criteria is not recorded. If course points fail to reach any of the recorded criteria, it is a fail.';
@@ -83,6 +92,8 @@ CREATE TABLE course
     CONSTRAINT course_begin_lte_end
         CHECK (closes IS NULL OR closes >= opens)
 );
+GRANT ALL PRIVILEGES ON course TO schooner_dev;
+GRANT SELECT ON course TO "www-data";
 
 COMMENT ON TABLE course IS
 'Course instances (one per year/implementation). NOTE: Course total score is calculated from assignment table records.';
@@ -130,7 +141,8 @@ CREATE TABLE enrollee
     CONSTRAINT course_email_unq
         UNIQUE (course_id, email)
 );
-
+GRANT ALL PRIVILEGES ON enrollee TO schooner_dev;
+GRANT SELECT ON enrollee TO "www-data";
 
 COMMENT ON TABLE enrollee IS
 'List of students enrolled to a course. NOTE: Redundant information for same student enrolled again, or in a different course, is accepted.';
@@ -158,6 +170,8 @@ CREATE TABLE handler
     name                VARCHAR(32)     NOT NULL UNIQUE,
     description         VARCHAR(5000)   NULL
 );
+GRANT ALL PRIVILEGES ON handler TO schooner_dev;
+GRANT SELECT ON handler TO "www-data";
 
 COMMENT ON TABLE handler IS
 'Each type of a submission handling has its own code which allows background tasks and web forms to recognize assignments that they need to handle.';
@@ -166,9 +180,9 @@ COMMENT ON COLUMN handler.description IS
 
 INSERT INTO handler
 VALUES
-('HUBREG', 'GitHub account registrations and', NULL),
-('HUBBOT', 'Retrieve exercises from GitHub repository', NULL),
-('APLUS', 'APlus Quizz', 'Scores are retrieved from APlus automatically.');
+('HUBREG', 'GitHub account registrations', NULL),
+('HUBBOT', 'GitHub exercise retriever', NULL),
+('APLUS', 'APlus Quizz score retriever', 'Scores are retrieved from APlus automatically.');
 
 
 --
@@ -197,7 +211,8 @@ CREATE TABLE assignment
     CONSTRAINT assignment_pass_lte_points
         CHECK (pass IS NULL OR pass <= points)
 );
-
+GRANT ALL PRIVILEGES ON assignment TO schooner_dev;
+GRANT SELECT ON assignment TO "www-data";
 
 COMMENT ON TABLE assignment IS
 'Tasks, exercices, quizzes, exams, etc. Sum of points -column dictates the course total points.';
@@ -251,6 +266,8 @@ CREATE TABLE submission
             (state != 'draft' AND evaluator IS NOT NULL AND score IS NOT NULL)
         )
 );
+GRANT ALL PRIVILEGES ON submission TO schooner_dev;
+GRANT SELECT, INSERT, UPDATE ON submission TO "www-data";
 
 COMMENT ON TABLE submission IS
 'Table structure does not prevent multiple submissions for each assignment. This must be possible, especially for the exam and its three attempts.';

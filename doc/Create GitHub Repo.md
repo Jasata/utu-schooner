@@ -1,5 +1,7 @@
 # Creating a GitHub Repository for Existing Project
 
+_This document has very little use for existing repo and on-going project._
+
 ## Create Git Repo
 
 - Open terminal at project root.
@@ -11,7 +13,7 @@
 ## Connect repo to GitHub
 
 - Login to GitHub.
-- Click the "new repository". **DO NOT initialize the repository with a README or LICENSE files!**.
+- Click the "new repository" (and make it private). **DO NOT initialize the repository with a README or LICENSE files!**.
 - Use the instructions given for pushing existing repo:  
   ```shell
   git remote add origin git@github.com:{USER}/{REPO}.git
@@ -28,7 +30,7 @@ _Assuming that the site directory `/var/www/schooner.utu.fi` was created when th
   _(Otherwise, the private repo prevents the cloning)._
   - GitHub Settings > SSH and PGP Keys > Add New Key
 - Login to the server and enter `/var/www/`.
-- `git clone git@github.com:Jasata/utu-schooner.git schooner.utu.fi`
+- `git clone git@github.com:{USER}/{REPO}.git schooner.utu.fi`
 
 # Appendix A - .gitignore
 

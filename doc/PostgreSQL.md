@@ -1,6 +1,12 @@
 # PostgreSQL
 
-This file exists because Schooner is the first medium-sized application that uses PostgreSQL database, and a collected findings / experiences document is a good idea.
+_This file exists because Schooner is the first medium-sized application that uses PostgreSQL database, and a collected findings / experiences document is a good idea._
+
+## PostgreSQL Basics
+
+- PostgreSQL cluster/server contains one or more databases. Users / roles are shared across the server, but no data is scared across databases (PostgreSQL does not allow querying across multiple databases!). Connections are limited to specified databases.
+- A database can contain one or more named schemas (namespaces) that contain tables and other objects (without name-colliding). Data can be queried across multiple schemas. [(see documentation)](https://www.postgresql.org/docs/8.1/ddl-schemas.html).
+- Instead of users and roles, PostgreSQL has only roles. A role that have been granted a login privilege is analogous to a user in other database engines.
 
 ## Python Connectors
 
@@ -45,6 +51,9 @@ As of 2021-08-13, newest PostgreSQL versions are 13.4 (2021-08-12) and 14.0 (bet
 | `postgresql`          | Core server files. v.11.12 in Debian 10.10 (~55 MB).   |
 | `postgresql-contrib`  | Extensions and additions that are distributed along with the PostgreSQL sources, but are not (yet) officially part of the PostgreSQL core.    |
 
+_Nowhere can I find any information **why** would I want to install `postgresql-contrib`. Instead, all sources just install it with an obscure reference to "useful additional" things. In this project, the package will not be installed, unless an actual reason is found to do so._
+
+Installed packages:
 ```
 # apt install postgresql
 Get:1 http://deb.debian.org/debian buster/main amd64 postgresql-client-common all 200+deb10u4 [85.1 kB]
@@ -56,11 +65,11 @@ Get:6 http://deb.debian.org/debian buster/main amd64 postgresql all 11+200+deb10
 Get:7 http://deb.debian.org/debian buster/main amd64 sysstat amd64 12.0.3-2 [562 kB]
 ```
 
+Some basics about PostgreSQL:
 - PostgreSQL client authentication is defined in the configuration file named `/etc/postgresql/11/main/pg_hba.conf`.  
   _For local connections, PostgreSQL is set to use the peer authentication method._
 - The `postgres` user is automatically created when PostgreSQL is installed. This user is the superuser for the PostgreSQL instance, and it is equivalent to the MySQL root user.  
-  _To log in to the PostgreSQL server as `postgres`:_  
-  `sudo su - postgres`
+  _Assume `postgres` identity:_  `sudo su - postgres`
 - PostgreSQL schemas are namespaces. Each schema belongs to only one database. PostgreSQL automatically creates a schema called `public` for every new database. All new objects that do not have schema specified, will be placed into the `public` schema.
 - When an object is referred without schema, PostgreSQL searches for it using "a schema search path" (list of schemas to look in). First match will be used.
 
@@ -70,7 +79,31 @@ Get:7 http://deb.debian.org/debian buster/main amd64 sysstat amd64 12.0.3-2 [562
 `/etc/postgresql/11/...` for configuration files.  
 `/var/lib/postgresql/11/main/...` for datafiles (see `/etc/postgres/11/main/postgresql.conf` : `data_directory = `).
 
+## Enable Remote Connections
 
+**NOTE:** PostgreSQL uses TCP port 5432.
+
+`/etc/postgresql/12/main/postgresql.conf`:
+```conf
+listen_addresses = '*'
+```
+`/etc/postgresql/12/main/pg_hba.conf`:
+```conf
+# TYPE    DATABASE  USER      ADDRESS     METHOD
+host      all       all       0.0.0.0/0   md5
+```
+_The above is super-lazy and should be more specific.. Maybe later._  
+
+Open `ufw` port:
+```shell
+ufw allow 5432/tcp
+```
+Restart PostgreSQL server:
+```shell
+systemctl restart postgresql.service
+```
+
+If user `postgres` access is to be used from a remote, the role needs to be given a password.
 
 ## Usage
 
@@ -106,13 +139,16 @@ NOTE: Current database is written in the `psql` prompt.
 
 ## Useful Commands
 
-| Action           | Meta  | SQL                                       |
-|------------------|-------|-------------------------------------------|
-| List databases   | `\l+` | `SELECT datname FROM pg_database;`        |
-| Select database  | `\c`  |                                           |
-| List tables      | `\dt` |                                           |
-| Current schema   |       | `SELECT current_schema();`                |
-| List roles       | `\du` |                                           |
+| Action               | `psql`      | SQL                                                     |
+|----------------------|-------------|---------------------------------------------------------|
+| List databases       | `\l+`       | `SELECT datname FROM pg_database;`                      |
+| Connect to database  | `\c`        |                                                         |
+| List tables          | `\dt [schema.]` |                                                         |
+| Current schema       |             | `SELECT current_schema();`                              |
+| List schmeas         | `\dn`       | `SELECT schema_name FROM information_schema.schemata;`  |
+| List roles           | `\du`       |                                                         |
+| DROP user            |             | `DROP OWNED BY {user}; DROP USER {user};`               |
+
 
 ## PL/Python - Python Procedural Language
 
