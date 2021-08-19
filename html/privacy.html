@@ -10,7 +10,7 @@
     <meta   name="author"
             content="jasata@utu.fi">
 
-    <title>Turku university - Course Virtual Machines</title>
+    <title>Turku university - Schooner</title>
 
     <link rel="stylesheet" href="css/font-awesome.min.css">
     <link rel="stylesheet" href="css/bootstrap.min.css">
@@ -67,7 +67,7 @@
             <main>
                 <nav class="site">
                     <ol>
-                        <li><a href="index.html">UTU Virtual Machines</a></li>
+                        <li><a href="index.html">Schooner</a></li>
                         <li>Privacy Policy</li>
                     </ol>
                 </nav>
@@ -75,10 +75,10 @@
                 <article>
                     <p>In brief, you should know:
                         <ul>
-                            <li><strong>You are anonymous for this service</strong>, <u>unless</u> you have specifically requested to be identified as a teacher</li>
-                            <li><strong>University of Turku Single Sign-On is trusted explicitly</strong>, making it unnecessary to handle identifiable personal data (not including those that have requested to be identified as teachers).</li>
-                            <li><strong>Web server access logs are anonymous.</strong> The automatically collected usage statistics (access and error logs) contain the usual information, such as IP, browser type and version, etc., but are otherwise completely anonymous and (within the capabilities of this service) cannot be connected to any data that identifies you as a person.</li>
-                            <li><strong>Teachers have their UID stored.</strong> Having the Single Sign-On User ID listed is the only way to identify a teacher and grant authenticated Single Sign-On session with additional access. To be granted teacher access, the user must accept that UID is stored.</li>
+                            <li><strong>You are anonymous for this service</strong>, <u>unless</u> you are 1) identified as an administrator or 2) enrolled in any of the courses that this service manages.</li>
+                            <li><strong>University of Turku Single Sign-On is trusted explicitly</strong>. Your credentials are not stored in this system.</li>
+                            <li><strong>Web server access <u>logs</u> are anonymous.</strong> The automatically collected usage statistics (access and error logs) contain the usual information, such as IP, browser type, browser version, etc., but are otherwise completely anonymous and (within the capabilities of this service) cannot be connected to any data that identifies you as a person.</li>
+                            <li><strong>Enrolled students have their UID, name, email and student ID stored.</strong> These are the minimum required details to enable course grading to be delivered to university systems.</li>
                         </ul>
                     </p>
                 </article>
@@ -87,7 +87,7 @@
                     <!-- https://gdpr.eu/privacy-notice/ -->
                     <h1 id="privacypolicy">Privacy Policy</h1>
 
-                    <p>Course Virtualization Project (henceforth referred to as <strong>website</strong>) is a service provided by University of Turku (henceforth referred to as <strong>UTU</strong>), Department of Future Technologies (henceforth referred to as <strong>DFT</strong>). This privacy policy will explain how our organization uses the personal data we collect from you when you use our website.</p>
+                    <p>Schooner (henceforth referred to as <strong>website</strong>) is a service provided by University of Turku (henceforth referred to as <strong>UTU</strong>), Department of Computing (henceforth referred to as <strong>DFT</strong>). This privacy policy will explain how our organization uses the personal data we collect from you when you use our website.</p>
 
                     <h2 id="topics">Topics:</h2>
 
@@ -111,11 +111,22 @@
 
                     <h1 id="what-data">What data do we collect?</h1>
 
-                    <p>This website collects the following data:</p>
+                    <p>Following data is imported to this service:</p>
 
-                    <p><strong>From teachers:</strong>
+                    <p><strong>Students registered to a course</strong> managed by this system:
                     <ul>
                         <li>UTU Single Sign-On User ID</li>
+                        <li>Name</li>
+                        <li>Student ID</li>
+                        <li>Email Address</li>
+                    </ul></p>
+
+                    <p>This website collects the following data:</p>
+
+                    <p><strong>From students:</strong>
+                    <ul>
+                        <li>GitHub account (used to submit course execises)</li>
+                        <li>Submission details (date and time, score, feedback from evaluating assistant)</li>
                     </ul></p>
 
                     <p><strong>From everyone else:</strong>
@@ -125,23 +136,25 @@
 
                     <h1 id="how-we-collect">How do we collect your data?</h1>
 
-                    <p>For anonymous and student access, this website does not collect nor store any identifiable personal data. To be granted teacher access, a single piece of personal data will be stored.</p>
+                    <p>Personal data (listed above) is not collected by this system, but imported from UTU Peppi system, with the exception of GitHub account. For anonymous and student access, this website does not collect nor store any other identifiable personal data. System will collect score and grading information from other systems and add them to user data.</p>
 
-                    <p>A user that contacts us directly and explicitly requests to be identified as a teacher, agrees to have his or her UTU Single Sign-On (henceforth referred to as <strong>SSO</strong>) ID stored in the website's list of teachers. User's UTU SSO ID is requested by the website administration and provided by the user in agreement with the associated terms and provisions.</p>
+                    <p>Users identified as administrators or course assistants will agree to have his or her UTU Single Sign-On (henceforth referred to as <strong>SSO</strong>) ID stored in the website's list of administrators or course assistants <u>permanently</u> and to be used in security audit logging.</p>
 
                     <h1 id="how-we-use-data">How will we use your data?</h1>
 
-                    <p>For teachers, we use the UTU SSO ID to identify the user as a teacher, granting him or her the additional privileges within our website. Additionally, we also record the ownership of all uploaded virtual machine images to the identified teacher, thus allowing him or her to manage those resources.</p>
+                    <p>Student submissions are used to check that required assignments are passed and to calculate course grade when the course is completed. Email is used to send automated messages notifying of deadlines, provided feedback for submissions, and to warn of any problems found in submissions.</p>
+
+                    <p>Administrators and course assistants have their activities logged for security reasons, in case students note irregularities in their data and/or submissions.</p>
 
                     <h1 id="how-we-store-data">How do we store your data?</h1>
 
-                    <p>This website securely stores teacher UTU SSO ID data at a virtual server instance, securely hosted and maintained by UTU IT-Services.</p>
+                    <p>This website stores all data into a locally-only accessible RDBMS, in a virtual server instance, securely hosted and maintained by UTU IT-Services.</p>
                     
-                    <p>This website will keep teacher UTU SSO IDs for as long as the user requires his or her privileges, or as long as the system contains virtual machine images owned by the user, whichever is longer. Once teacher privileges are relinquished and all owned virtual machine images are removed, the UTU SSO ID is deleted from the website.</p>
+                    <p>This website will keep student's personal data for as long as standing orders require to keep them (for audits or examining data for contested results). Student data is removed annually when no longer subject to univeristy archival requirements.</p>
 
                     <h1 id="marketing">Marketing</h1>
 
-                    <p>This website would like to send you information about courses and virtual machine images that we think you might like, but since we have no idea who you are, we can't.</p>
+                    <p>This website neither engages in any type of marketing nor share any of the data with external systems or parties.</p>
 
                     <h1 id="my-rights">What are your data protection rights?</h1>
 
@@ -159,9 +172,7 @@
 
                     <p><b>The right to data portability</b> – You have the right to request us to transfer the data that we have collected to another organization, or directly to you, under certain conditions.</p>
 
-                    <p>If you make a request, we have one month to respond to you. If you would like to exercise any of these rights, please contact us at our email:</p>
-
-                    <p><a href="mailto:vm-support@utu.fi">vm-support@utu.fi</a></p>
+                    <p>If you make a request, we have one month to respond to you. If you would like to exercise any of these rights, please contact the lecturer.</p>
 
                     <h1 id="what-are-cookies">What are cookies</h1>
 
@@ -191,7 +202,7 @@
 
                     <h1 id="how-to-manage-cookies">How to manage cookies</h1>
 
-                    <p>You can set your browser not to accept cookies, and the above website tells you how to remove cookies from your browser. However, in a few cases, some of our website features may not function as a result.</p>
+                    <p>You can set your browser not to accept cookies, and the above website tells you how to remove cookies from your browser. However, this will render the features of this website non-functional and may prevent successful completion of the course.</p>
 
                     <h1 id="other-sites">Privacy policies of other websites</h1>
 
@@ -200,13 +211,13 @@
                     <h1 id="policy-changes">Changes to our privacy policy</h1>
 
                     <!-- NOTE: Regular 10-year reviews -->
-                    <p>Our organization keeps its privacy policy under regular review and places any updates on this web page. This privacy policy was last updated on 3rd of January, 2020.</p>
+                    <p>Our organization keeps its privacy policy under regular review and places any updates on this web page. This privacy policy was last updated on 17th of August, 2021.</p>
 
                     <h1 id="how-to-contact">How to contact us</h1>
 
                     <p>If you have any questions about our privacy policy, the data we hold on you, or you would like to exercise one of your data protection rights, please do not hesitate to contact us.</p>
 
-                    <p>Email us at: <a href="mailto:vm-support@utu.fi">vm-support@utu.fi</a></p>
+                    <p>Email your course instructor, at an address which you can find from the course Moodle page.</p>
 
                     <h1 id="contact-authority">How to contact the appropriate authority</h1>
 
@@ -215,8 +226,6 @@
                     <p>Email: <a href="mailto:tietosuoja@om.fi">tietosuoja@om.fi</a></p>
 
                     <p>Address:<div style="padding: 20px;">Ratapihantie 9<br />6th floor<br />00520 Helsinki</div></p>
-
-
 
                 </article>
             </main>
@@ -236,13 +245,11 @@
         <div><!-- flex container -->
             <div>
                 © <a href="https://www.utu.fi">University of Turku</a>,
-                <a href="https://tech.utu.fi/en/">Department of Future  Technologies</a> 2019<br>
-                Brought to you by the <a href="https://gitlab.utu.fi/soft/ftdev/wikis/home">Course virtualization team</a> @ <a href="https://tech.utu.fi/fi/software-engineering/">SwDev laboratory</a>.
+                <a href="https://tech.utu.fi/en/">Department of Computing</a> 2021<br>
+                <a href="https://oma.utu.fi/Person.aspx?accountname=i:0%C7%B5.t|adfs20|jasata">Jani Tammi</a> @ <a href="https://tiers.utu.fi/">Turku Intelligent Embedded & Robotic Systems</a>.
             </div>
             <div>
-                <a href="documentation.html">Documentation</a>
-                <a href="#">Statistics</a>
-                <a href="#">Privacy</a>
+                <a href="privacy.html">Privacy Policy</a>
             </div>
         </div>
     </footer>

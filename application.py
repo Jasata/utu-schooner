@@ -41,7 +41,7 @@
 import os
 import time
 import logging
-import sqlite3
+import psycopg
 import datetime
 
 from logging.handlers       import RotatingFileHandler
@@ -107,6 +107,19 @@ finally:
     setattr(app, 'appversion', appversion)
 
 
+# PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
+__appdate__     = datetime.datetime.fromtimestamp(os.path.getmtime('APPVERSION')).strftime("%Y-%m-%d")
+__version__     = f"{app.appversion} ({__appdate__})"
+__authors__     = "Jani Tammi <jasata@utu.fi>, Tuisku Polvinen <tumipo@utu.fi>"
+VERSION         = __version__
+HEADER          = f"""
+=============================================================================
+Schooner v.{__version__} - Simple Course Management System
+University of Turku, Faculty of Technology, Department of Computing
+(c) 2018-2021 {__authors__}
+"""
+
+
 #
 # Flask Application Configuration
 #
@@ -159,15 +172,7 @@ sso = SSO(
 #
 # This logging happens only once, when uWSGI daemon starts
 #
-app.logger.info(
-    "\n"
-    "==============================================================\n"
-    "UTU Course Virtualization Website REST API Flask application started\n"
-    "Turku University (2019) Department of Future Technologies\n"
-    "Version {}, Jani Tammi <jasata@utu.fi>\n"
-    "REST API version {}\n"
-    .format(app.appversion, app.apiversion)
-)
+app.logger.info(f"{HEADER}\nREST API version {app.apiversion}\n")
 
 
 
@@ -199,13 +204,19 @@ def before_request():
     #
     # Ensure database connection
     #
+    """SQLite3
     if not hasattr(g, 'db'):
         g.db = sqlite3.connect(
             app.config.get('SQLITE3_DATABASE_FILE', 'application.sqlite3')
         )
         cursor = g.db.cursor()
         cursor.execute("PRAGMA foreign_keys = 1")
-
+    """
+    if not hasattr(g, 'db'):
+        g.db = psycopg.connect(
+            f"dbname={app.config.get('PGSQL_DATABASE')} \
+                user={app.config.get('PGSQL_USERNAME')}"
+        )
 
     #
     # Refresh session expiration

@@ -14,6 +14,7 @@
  *  2020-09-04  'stateChanged' event triggers with role data
  *  2020-09-12  Fixed hardcoded SSO goto URL into window.location.hostname
  *  2020-09-15  SSO goto/destination fixed, again...
+ *  2021-08-17  Modified for Schooner use.
  *
  * USE
  * ----------------------------------------------------------------------------
@@ -41,7 +42,7 @@
  *          $('#sso').sso();
  *          // SSO stateChanged event handler
  *          $("#sso").on("stateChanged", function(event, role) {
- *              if (role === 'teacher') {
+ *              if (role === 'admin') {
  *                  // Make necessary calls or trigger appropriate events
  *              } else {
  *                  console.log("Access Denied!");
@@ -50,13 +51,13 @@
  *      });
  *
  *      The 'role' argument will provide the session state:
- *      ['anonymous', 'student', 'teacher']
+ *      ['anonymous', 'user', 'admin']
  *
  *
  * ALTERNATIVE WAY TO GET SSO SESSION STATE
  * ----------------------------------------------------------------------------
  *  The $('div#sso') has a class to match the SSO session state - however,
- *  in addition to valid CSS Classes (['anonymous', 'student', 'teacher']),
+ *  in addition to valid CSS Classes (['anonymous', 'user', 'admin']),
  *  it may temporarily have a class 'deactivated', but only for duration of
  *  an Ajax query (to reject user input until complete).
  *
@@ -82,8 +83,8 @@
  *          $(document).ready(function() {
  *              $("#sso").sso();
  *              $("#sso").on("stateChanged", function(event, role) {
- *                  if (role === 'teacher')
- *                      console.log('You are a teacher!');
+ *                  if (role === 'admin')
+ *                      console.log('You are an administrator!');
  *              });
  *          });
  *      </script>
@@ -106,15 +107,15 @@
  *  deactivated
  *          Transient state during which the element does not accept input.
  *          Set when the module starts login or logout sequence and replaced
- *          with the new role [anonymous | student | teacher] -state (class).
+ *          with the new role [anonymous | user | admin] -state (class).
  *  anonymous
  *          Unauthenticated user. Either has not yet logged in or cannot login
  *          because has no account.
- *  student
+ *  user
  *          UTU SSO Session is authenticated / valid, but the UID is not listed
- *          in the database - thus the user is a student.
- *  teacher
- *          Authenticated UTU SSO session AND the UID is found in the database.
+ *          in the 'admin' -table. Thus, the session is for a user.
+ *  admin
+ *          Authenticated UTU SSO session AND the UID is found in the 'admin' -table.
  */
 
 jQuery.fn.sso = function(options)

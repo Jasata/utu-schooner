@@ -10,6 +10,7 @@
 #   2019-12-07  Initial version.
 #   2020-01-01  Moved response handlers into response.py module
 #   2020-09-23  Remove Publish class
+#   2021-08-18  Add/import three Schooner classes
 #
 #
 #   DOCUMENTATION
@@ -105,6 +106,10 @@
 #               raise
 #
 #
+
+from .Course                    import Course
+from .Enrollee                  import Enrollee
+from .GitHubAccountRegistration import GitHubAccountRegistration
 
 from .File          import File
 from .Upload        import Upload

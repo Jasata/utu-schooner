@@ -4,9 +4,9 @@
 # Schooner - Course Management System
 # University of Turku / Faculty of Technilogy / Department of Computing
 # (c) 2021, Jani Tammi <jasata@utu.fi>
+#
+#
 # routes.py - Flask Application routes
-#
-#
 #   2019-12-07  Initial version
 #   2019-12-23  Add /sso endpoints
 #   2019-12-25  Add /api/publish endpoint
@@ -14,6 +14,7 @@
 #   2020-09-09  Add /api/file/flow  (Flow.js GET, POST upload endpoint)
 #   2020-09-12  Add /sse/flow-upload-status
 #   2020-09-23  Clean obsolete code
+#   2021-08-17  Modified for Schooner
 #
 #
 #   This Python module only defines the routes, which the application.py
@@ -255,6 +256,69 @@ def api_doc():
             return api.response((200, {'endpoints': eplist}))
     except Exception as e:
         return api.exception_response(e)
+
+
+
+###############################################################################
+#
+# Dynamic pages
+#
+@app.route('/register.html', methods=['GET'])
+def register_get():
+    """Render page to enter GitHub account."""
+    parameters = {
+        'course_id' : request.args.get('cid'),
+        'title'     : 'Register GitHub Account',
+        'uid'       : sso.uid,
+        'assignment': ''
+    }
+
+    if not parameters['uid']:
+        return flask.render_template(
+            'please_login.jinja',
+            **parameters
+        )
+    elif not parameters['course_id']:
+        gitcourses = api.Enrollee.gitcourseids(parameters['uid'])
+        app.logger.debug(f"Git Courses: {str(gitcourses)}")
+        return flask.render_template(
+            'choose_course.jinja',
+            courselist = gitcourses,
+            **parameters
+        )
+    else:
+        # Render edit/enter view
+        return flask.render_template(
+            'register.jinja',
+            enrollee = api.Enrollee(parameters['course_id'], parameters['uid']),
+            course = api.Course(parameters['course_id']),
+            **parameters
+        )
+
+
+@app.route('/register.html', methods=['POST'])
+def register_post():
+    """Accept GitHub account registration."""
+    try:
+        course = api.GitHubAccountRegistration(
+            flask.request.form['cid'],
+            sso.uid
+        )
+        app.logger.info(
+            f"Course ('{course.course_id}') is on-going: {str(course.is_ongoing)}")
+    except Exception as e:
+        # TODO: Log exception somewhere we can SEE it!
+        app.logger.exception(f"Unable to handle GitHub registration! {str(e)}")
+        return flask.render_template('server_error.jinja')
+
+
+
+@app.route('/assistant/list.html', methods=['GET'])
+def assistant_list_get():
+    """List """
+    # 1) Check authenticated session (sso.is_authenticated)
+    # 2) Check is assistant (list of course_id's)
+    # 3) Present list of queued submissions
 
 
 

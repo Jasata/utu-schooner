@@ -1,0 +1,133 @@
+{#
+    {% ... %} for Statements
+    {{ ... }} for Expressions to print to the template output
+    { # ... # } for Comments not included in the template output
+    #  ... ## for Line Statements
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta   charset="utf-8">
+    <meta   name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta   name="description"
+            content="">
+    <meta   name="author"
+            content="jasata@utu.fi">
+
+    <title>Schooner - {{title}}</title>
+
+    <!-- Vendor -->
+    <link   rel="stylesheet"
+            type="text/css"
+            href="css/font-awesome.min.css">
+    <link   rel="stylesheet"
+            type="text/css"
+            href="css/bootstrap.min.css">
+    <link   rel="stylesheet"
+            type="text/css"
+            href="css/sso.css">
+    <script type="text/javascript"
+            charset="utf8"
+            src="js/jquery.min.js">
+    </script>
+    <script type="text/javascript"
+            charset="utf8"
+            src="js/bootstrap.min.js">
+    </script>
+    <script type="text/javascript"
+            charset="utf8"
+            src="js/sso.js">
+    </script>
+
+    <link   rel="stylesheet"
+            type="text/css"
+            href="css/common.css">
+    <link   rel="stylesheet"
+            type="text/css"
+            href="css/subpage.css">
+
+    <script>
+        $(document).ready(function() {
+            // Initialize SSO element
+            $("#sso").sso();
+
+            // Close sandwich-menu click
+            $('.navbar-nav a').on('click', function() {
+                $('.navbar-collapse').collapse('hide');
+            });
+        });
+    </script>
+</head>
+<body>
+<body data-spy="scroll" data-target="#navbarContent" data-offset="70">
+
+    <div class="fixed-top navbar-container">
+        <nav class="navbar navbar-expand-md navbar-light bg-white py-0" style="width: 100%;">
+            <div class="container navbar-brand-container">
+                <a class="navbar-brand py-3" href="."><img id="navbar-logo" src="img/utu-torch-black.png"></a>
+                <span id="navbar-title">{{ title }}</span>
+                <button class="navbar-toggler"
+                        type="button"
+                        data-toggle="collapse"
+                        data-target="#navbarContent">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="nav navbar-nav">
+                        <!--
+                        <a class="nav-link p-3" href="#introduction">Introduction</a>
+                        <a class="nav-link p-3" href="#bios">BIOS Settings</a>
+                        -->
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <div id="sso"></div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <div class="container-fluid">
+        <div class="row" id="content-row">
+            <main>
+                <nav class="site">
+                    <ol>
+                        <li><a href="index.html">Schooner</a></li>
+                        <li>{{ title }}</li>
+                    </ol>
+                </nav>
+
+                <article>
+                    {% block content %}{% endblock %}
+                </article>
+
+            </main>
+        </div>
+    </div>
+    <!-- MAIN ENDS -->
+
+
+
+
+    <!-- FOOTER -------------------------------------------------------------->
+    <footer><!-- flex container -->
+        <div>
+            <img    class="footer-logo"
+                    src="img/UTU_logo-white_EN_transparent.png">
+        </div>
+        <div><!-- flex container -->
+            <div>
+                © <a href="https://www.utu.fi">University of Turku</a>,
+                <a href="https://tech.utu.fi/en/">Department of Computing</a> 2021<br>
+                <a href="https://oma.utu.fi/Person.aspx?accountname=i:0%C7%B5.t|adfs20|jasata">Jani Tammi</a> @ <a href="https://tiers.utu.fi/">Turku Intelligent Embedded & Robotic Systems</a>.
+            </div>
+            <div>
+                <a href="privacy.html">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+
+
+</body>
+
+</html>

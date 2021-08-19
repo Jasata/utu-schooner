@@ -1,0 +1,54 @@
+{% extends 'layout.jinja' %}
+{#
+    List all active courses for the user and reload the page with
+    selected course_id is '..?cid={course_id}'
+
+    REQUIRES
+        courselist: list        
+        
+#}
+{% block content %}
+    {% if not courselist %}
+        You are not enrolled in any active course which requires a GitHub account.<br>
+        If you think this is an error, please contact your course instructor.
+    {% elif courselist|length == 1 %}
+        Reloading page, please wait...
+        <script>
+        var url = window.location.href;
+        if (url.indexOf('?') > -1) {
+            url += '&cid={{courselist[0]}}'
+        } else {
+            url += '?cid={{courselist[0]}}'
+        }
+        window.location.href = url;
+        </script>
+    {% else %}
+        <script>
+            function getCourseSelection(selectObject) {
+                var value = selectObject.value;
+                if (value) {
+                    var url = window.location.href;
+                    if (url.indexOf('?') > -1) {
+                        url += '&cid=' + value
+                    } else {
+                        url += '?cid=' + value
+                    }
+                    window.location.href = url;
+                }
+            }
+        </script>
+        <div>You are currently enrolled in more than one on-going course which requires a GitHub account. Please choose which course will you register your account to.</div>
+        <select id="cid" name="cid" onchange="getCourseSelection(this)">
+            <option value="">Choose course</option>
+        {% for course in courselist %}
+            {% set coursename = course['name'] + ' (' + course['opens'].strftime('%d.%m.%Y') %}
+            {% if course['closes'] %}
+                {% set coursename = coursename + '-' + course['closes'].strftime('%d.%m.%Y') + ')' %}
+            {% else %}
+                {% set coursename = coursename + ')' %}
+            {% endif %}
+            <option value="{{ course['course_id'] }}">{{ coursename }}</option>
+        {% endfor %}
+        </select>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends 'layout.jinja' %}
+
+{% block content %}
+    <p>Please login to use this service (right-upper corner).</p>
+    <details>
+        <summary>Is it safe?</summary>
+        <p><strong>Yes, it is.</strong> You will be redirected to university SSO login page and returned here, once the session cookie has been created. This service will then consult the SSO server to check that the session key is valid.</p>
+        <p>Your password will never be revealed to this service.</p>
+    </details>
+{% endblock %}

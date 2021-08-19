@@ -10,18 +10,51 @@
 # NOTE: Not accepting filename for  to the database because
 #       SQLite3 simply creates a new file if one does 
 #
-import os
-import sqlite3
+import datetime
+from flask import g
+
+class Course(dict):
+
+    def __custom_get__(self, key):
+        """For all DotDict.key access, missing or otherwise."""
+        return self.get(key, self.get('*', None))
 
 
-class DataObject():
+    __getattr__ = __custom_get__
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 
-    def __init__(self, dbfile: str, course_id: str):
-        if not os.path.isfile(dbfile):
-            raise ValueError(f"Database file '{dbfile}' does not exist!")
-        self._dbfile = dbfile
-        # 1) 'course' columns as object members
-        # 2) self.assignment[] of Assignment Objects
 
-def enrolled_courses(dbfile: str, uid: str):
-    """Return a list of """
+    def __missing__(self, key):
+        """For DefaultDotDict[key] access, missing keys."""
+        return self.get('*', None)
+
+
+    def __init__(self, course_id: str):
+        """Course implementation."""
+        SQL = """
+            SELECT      *
+            FROM        course
+            WHERE       course_id = %(course_id)s
+        """
+        with g.db.cursor() as c:
+            if c.execute(SQL, locals()).rowcount:
+                self.update(dict(zip([key[0] for key in c.description], c.fetchone())))
+            else:
+                raise ValueError(f"Course ('{course_id}') not found!")
+
+
+    @property
+    def is_ongoing(self):
+        now = datetime.datetime.now()
+        if self.opens < now:
+            if self.closes and self.closes > now:
+                return True
+        return False
+
+
+    def __repr__(self) -> str:
+        string = ""
+        for attr, value in self.__dict__.items():
+            string += f"Course.{attr} = {value}\n"
+        return string

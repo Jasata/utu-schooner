@@ -1,0 +1,19 @@
+{% extends 'layout.jinja' %}
+
+{% block content %}
+    <div>
+        <form action="/register.html" method="post">
+        <input type="hidden" name="cid" value="{{ course_id }}">
+        <input type="text" name="github" value="{{ enrollee.github_account if enrollee.github_account }}">
+        {% if enrollee.github_account %}
+            <button>Update</button>
+        {% else %}
+            <button>Register</button>
+        {% endif %}
+        </form>
+    </div>
+    <div>Note that updating the github account is possible only until the
+    collaborator invitation has been successfully accepted. This feature is
+    available primarily to correct typos that prevent the system from matching
+    the registered account name and the pending invitation.</div>
+{% endblock %}

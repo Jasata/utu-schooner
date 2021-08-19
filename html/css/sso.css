@@ -66,11 +66,11 @@
 {
     content:                    '\f090'; /* sign-in         */
 }
-#sso.student a::before
+#sso.user a::before
 {
     content:                    '\f19d'; /* graduation cap  */
 }
-#sso.teacher a::before
+#sso.admin a::before
 {
     content:                    '\f19c'; /* university      */
 }

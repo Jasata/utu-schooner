@@ -6,11 +6,31 @@
 --
 --  2021-08-13  Initial version.
 --  2021-08-17  Updated.
+--  2021-08-19  .github_account and .github_repository in enrollee.
 --
 -- Execute as 'schooner' (for ownership)
 
 -- https://www.postgresql.org/docs/9.1/datatype-enum.html
 CREATE TYPE active_t AS ENUM ('active', 'inactive');
+
+
+--
+-- Admin-privileged users
+--
+CREATE TABLE admin
+(
+    uid                 VARCHAR(10)     NOT NULL PRIMARY KEY,
+    created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status              active_t        NOT NULL DEFAULT 'active'
+);
+GRANT ALL PRIVILEGES ON admin TO schooner_dev;
+GRANT SELECT ON admin TO "www-data";
+
+COMMENT ON TABLE admin IS
+'Table lists all SSO IDs that are granted administrator privileges in this system. Used by the web application SSO authentication module.';
+COMMENT ON COLUMN admin.uid IS
+'UTU SSO ID (aka. the login)';
+
 
 --
 -- Grading systems
@@ -122,7 +142,8 @@ CREATE TABLE enrollee
 (
     course_id           VARCHAR(16)     NOT NULL,
     uid                 VARCHAR(10)     NOT NULL,
-    github              VARCHAR(40)     NULL,
+    github_account      VARCHAR(40)     NULL,
+    github_repository   VARCHAR(100)    NULL,
     studentid           VARCHAR(10)     NOT NULL,
     email               VARCHAR(64)     NULL,
     lastname            VARCHAR(32)     NOT NULL,
@@ -134,8 +155,8 @@ CREATE TABLE enrollee
         REFERENCES course (course_id)
         ON UPDATE CASCADE
         ON DELETE RESTRICT,
-    CONSTRAINT course_github_unq
-        UNIQUE (course_id, github),
+    CONSTRAINT course_github_account_unq
+        UNIQUE (course_id, github_account),
     CONSTRAINT course_studentid_unq
         UNIQUE (course_id, studentid),
     CONSTRAINT course_email_unq
@@ -148,8 +169,10 @@ COMMENT ON TABLE enrollee IS
 'List of students enrolled to a course. NOTE: Redundant information for same student enrolled again, or in a different course, is accepted.';
 COMMENT ON COLUMN enrollee.uid IS
 'UTU ID, also known as the user name. The name used in the short email address.What is used to login to UTU SSO.';
-COMMENT ON COLUMN enrollee.github IS
-'GitHub account name. Min: 1, max: 39, can contain: a-z A-Z 0-0 "-" but cannot start with dash character.';
+COMMENT ON COLUMN enrollee.github_account IS
+'Not NULL if account registration has been successfully handled. GitHub account name. Min: 1, max: 39, can contain: a-z A-Z 0-0 "-" but cannot start with dash character.';
+COMMENT ON COLUMN enrollee.github_repository IS
+'Not NULL if account registration has been successfully handled. GitHub maximum repository name length is 100 characters.';
 COMMENT ON COLUMN enrollee.studentid IS
 'Required to send grades. Possibly always numeric and up to 7 digits long. This solution acceptes strings up to 10 characters.';
 COMMENT ON COLUMN enrollee.email IS
@@ -211,6 +234,11 @@ CREATE TABLE assignment
     CONSTRAINT assignment_pass_lte_points
         CHECK (pass IS NULL OR pass <= points)
 );
+-- Allow only one 'HUBREG' assignment per course
+CREATE UNIQUE INDEX assignment_single_hubreg_idx
+ON assignment (course_id, handler)
+WHERE (handler = 'HUBREG');
+
 GRANT ALL PRIVILEGES ON assignment TO schooner_dev;
 GRANT SELECT ON assignment TO "www-data";
 
@@ -239,6 +267,7 @@ COMMENT ON COLUMN assignment.latepenalty IS
 --
 CREATE TABLE submission
 (
+    submission_id       BIGSERIAL       PRIMARY KEY,
     assignment_id       VARCHAR(8)      NOT NULL,
     course_id           VARCHAR(16)     NOT NULL,
     uid                 VARCHAR(10)     NOT NULL,
@@ -286,7 +315,7 @@ COMMENT ON COLUMN submission.confidential_notes IS
 
 -- PostgreSQL does not support SQL triggers (surprisingly).
 -- Each requires a trigger function...
-CREATE OR REPLACE FUNCTION trgfn_submission_bru()
+CREATE OR REPLACE FUNCTION trfnc_submission_bru()
     RETURNS TRIGGER
     LANGUAGE PLPGSQL
 AS $$
@@ -300,4 +329,70 @@ CREATE TRIGGER submission_bru
     BEFORE UPDATE
     ON submission
     FOR EACH ROW
-    EXECUTE PROCEDURE trgfn_submission_bru();
+    EXECUTE PROCEDURE trfnc_submission_bru();
+
+
+
+
+--
+-- Emails
+--
+CREATE TABLE email
+(
+    email_id            BIGSERIAL       PRIMARY KEY,
+    course_id           VARCHAR(16)     NULL,
+    uid                 VARCHAR(10)     NULL,
+    sent_from           VARCHAR(64)     NOT NULL,
+    sent_to             VARCHAR(320)    NOT NULL,
+    subject             VARCHAR(255)    NOT NULL,
+    body                VARCHAR(65536)  NULL,
+    state               VARCHAR(8)      NOT NULL DEFAULT 'queued',
+    created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by          TEXT            NOT NULL DEFAULT CURRENT_USER,
+    sent_at             TIMESTAMP       NULL,
+    FOREIGN KEY (course_id, uid)
+        REFERENCES enrollee (course_id, uid)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    CONSTRAINT email_state_chk
+        CHECK (state IN ('queued', 'failed', 'sent'))
+);
+GRANT ALL PRIVILEGES ON email TO schooner_dev;
+GRANT SELECT, INSERT ON email TO "www-data";
+
+COMMENT ON TABLE email IS
+'Email cron job visits this table periodically to see .sent_at IS NULL rows (not yet sent) and sends them out.';
+COMMENT ON COLUMN email.course_id IS
+'Together with "uid", an optional reference that links the email to an enrolled student.';
+COMMENT ON COLUMN email.uid IS
+'Together with "course_id", an optional reference that links the email to an enrolled student.';
+COMMENT ON COLUMN email.sent_from IS
+'This should always be the course''s RT queue address, e.g., "dte20068@utu.fi".';
+COMMENT ON COLUMN email.sent_to IS
+'Single recipient email address. Maximum local part (before @) is 64 characters and maximum domain part is 255 characters.';
+COMMENT ON COLUMN email.state IS
+'All emails that have yet-to-be-sent are in state = ''queued''. Ignoring transient errors, the email cron job will set handled records either as ''failed'' (non-transient error) or ''sent'' if successfully sent.';
+
+
+CREATE TABLE email_attachment
+(
+    email_id            BIGINT          NOT NULL,
+    name                VARCHAR(255)    NOT NULL,
+    content             BYTEA           NOT NULL,
+    FOREIGN KEY (email_id)
+        REFERENCES email (email_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT email_attachment_name_unq
+        UNIQUE (email_id, name)
+);
+GRANT ALL PRIVILEGES ON email_attachment TO schooner_dev;
+GRANT SELECT, INSERT ON email_attachment TO "www-data";
+
+COMMENT ON TABLE email_attachment IS
+'An email message may contain zero to N attachments. Create both email and email_attachment records in a single transaction to prevent the email cron job from sending the message while the attachment(s) are being inserted.';
+COMMENT ON COLUMN email_attachment.name IS
+'Filename of the attachment';
+COMMENT ON COLUMN email_attachment.content IS
+'Binary content of the attachment. BUT IS TEXT BETTER, IF CONTENT IS ENCODED ANYWAY?';
+

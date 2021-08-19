@@ -3,7 +3,7 @@
 #
 # Schooner - Course Management System
 # University of Turku / Faculty of Technilogy / Department of Computing
-# (c) 2021, Jani Tammi <jasata@utu.fi>
+# (c) 2019-2021, Jani Tammi <jasata@utu.fi>
 # sso.py - Single Sign-On module for API endpoints
 #
 #
@@ -11,14 +11,15 @@
 #   2019-12-22  .authenticated and .validate().
 #   2020-01-01  Only "enabled" teachers get teacher role.
 #   2020-01-01  Chanced to 'active' / 'inactive' status values.
+#   2021-08-17  Modified for Schooner schema
 #
 # Module replies on Flash.session to maintain UID and ROLE variables.
 # Possible states are:
 #
 #                           UID         ROLE
 #       Not logged-in       None        'anonymous'
-#       Student             {UID}       'student'
-#       Teacher             {UID}       'teacher'
+#       Generic user        {UID}       'user'
+#       Admin               {UID}       'admin'
 #
 # ============================================================================
 #   USING THIS MODULE
@@ -52,10 +53,6 @@
 #
 # =============================================================================
 #   END POINTS SUPPORTING THIS MODULE
-#
-#
-# Three API endpoints are needed by the client side 'sso.js' code.
-#
 #
 # [GET] /sso/login?destination=...
 #           Calls ´sso.login(force = true)' to reload SSO session from
@@ -121,7 +118,7 @@ class SSO:
             #session['UID'] = self.__get_hashed_uid(request)
         # Query DB to determine teacher/student role
         if self.session['UID'] is not None and not self.session.get('ROLE'):
-            sql = f"SELECT * FROM teacher WHERE uid = '{self.session['UID']}' "
+            sql = f"SELECT * FROM admin WHERE uid = '{self.session['UID']}' "
             sql += "AND status = 'active'"
             try:
                 cursor = g.db.cursor()
@@ -133,9 +130,9 @@ class SSO:
                 ) from None
             else:
                 if result is None:
-                    self.session['ROLE'] = 'student'
+                    self.session['ROLE'] = 'user'
                 else:
-                    self.session['ROLE'] = 'teacher'
+                    self.session['ROLE'] = 'admin'
             finally:
                 cursor.close()
         elif not self.session.get('ROLE'):
@@ -178,11 +175,11 @@ class SSO:
     #
     #   Use these property-functions to check SSO session state.
     #
-    #       PROPERTY            ANONYMOUS   STUDENT     TEACHER
+    #       PROPERTY            ANONYMOUS   USER        ADMIN
     #       .is_authenticated   False       True        True
     #       .is_anonymous       True        False       False
-    #       .is_student         False       True        False
-    #       .is_teacher         False       False       True
+    #       .is_user            False       True        False
+    #       .is_admin           False       False       True
     #
     @property
     def is_authenticated(self) -> bool:
@@ -199,15 +196,15 @@ class SSO:
 
 
     @property
-    def is_student(self) -> bool:
-        if 'student' == self.session.get('ROLE', None):
+    def is_user(self) -> bool:
+        if 'user' == self.session.get('ROLE', None):
             return True
         return False
 
 
     @property
-    def is_teacher(self) -> bool:
-        if 'teacher' == self.session.get('ROLE', None):
+    def is_admin(self) -> bool:
+        if 'admin' == self.session.get('ROLE', None):
             return True
         return False
 

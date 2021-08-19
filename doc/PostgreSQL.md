@@ -149,6 +149,18 @@ NOTE: Current database is written in the `psql` prompt.
 | List roles           | `\du`       |                                                         |
 | DROP user            |             | `DROP OWNED BY {user}; DROP USER {user};`               |
 
+## Drop Database
+
+Drop all connections prior to dropping the database (execute as `postgres`):
+```sql
+SELECT    pg_terminate_backend(pg_stat_activity.pid)
+FROM      pg_stat_activity
+WHERE     pg_stat_activity.datname = 'schooner'
+          AND
+          pid <> pg_backend_pid();
+DROP DATABASE schooner;
+```
+
 
 ## PL/Python - Python Procedural Language
 
