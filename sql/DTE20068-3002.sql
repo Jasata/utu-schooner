@@ -5,6 +5,7 @@
 -- Jani Tammi <jasata@utu.fi>
 --
 --  2021-08-13  Initial version.
+--  2021-08-22  Updated for assignment.retries.
 --
 
 INSERT INTO course
@@ -35,6 +36,7 @@ VALUES
     'HUBREG',
     1,
     1,
+    NULL,
     '2021-10-30',
     NULL
 ),
@@ -46,6 +48,7 @@ VALUES
     NULL,
     1,
     1,
+    0,
     '2021-10-27',
     NULL
 ),
@@ -57,6 +60,7 @@ VALUES
     'HUBBOT',
     40,
     NULL,
+    0,
     '2021-11-07',
     NULL
 ),
@@ -68,6 +72,7 @@ VALUES
     'HUBBOT',
     60,
     NULL,
+    0,
     '2021-11-14',
     NULL
 ),
@@ -79,6 +84,7 @@ VALUES
     'HUBBOT',
     80,
     NULL,
+    0,
     '2021-11-21',
     NULL
 ),
@@ -90,6 +96,7 @@ VALUES
     'HUBBOT',
     100,
     NULL,
+    0,
     '2021-11-28',
     NULL
 ),
@@ -101,6 +108,7 @@ VALUES
     'HUBBOT',
     100,
     NULL,
+    0,
     '2021-12-05',
     NULL
 ),
@@ -112,6 +120,7 @@ VALUES
     'HUBBOT',
     120,
     NULL,
+    0,
     '2021-12-12',
     NULL
 ),
@@ -123,6 +132,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2021-10-31',
     NULL
 ),
@@ -134,6 +144,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2021-11-07',
     NULL
 ),
@@ -145,6 +156,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2021-11-14',
     NULL
 ),
@@ -156,6 +168,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2021-11-21',
     NULL
 ),
@@ -167,6 +180,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2021-11-28',
     NULL
 ),
@@ -178,6 +192,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2021-12-05',
     NULL
 ),
@@ -189,6 +204,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2021-12-12',
     NULL
 ),
@@ -200,6 +216,7 @@ VALUES
     NULL,
     8,
     8,
+    0,
     '2021-12-12',
     NULL
 ),
@@ -211,6 +228,7 @@ VALUES
     NULL,
     245,
     147,
+    2,
     '2021-12-12',
     NULL
 );

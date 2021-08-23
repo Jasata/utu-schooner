@@ -24,7 +24,6 @@ if sys.version_info < pyreq:
     )
     os._exit(1)
 
-import pwd
 import time
 import logging
 import logging.handlers
@@ -32,9 +31,7 @@ import logging.handlers
 import json
 import requests
 import git
-import csv
 import psycopg
-from dotenv import load_dotenv
 
 import time
 import errno
@@ -45,83 +42,101 @@ import subprocess
 import shutil
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
-__version__     = "0.2.2 (2021-08-17)"
-__authors__     = "Jani Tammi <jasata@utu.fi>"
+__version__     = "0.3.0 (2021-08-20)"
+__authors__     = "Tuisku Polvinen <tumipo@utu.fi>, Jani Tammi <jasata@utu.fi>"
 VERSION         = __version__
 HEADER          = f"""
 =============================================================================
 University of Turku, Faculty of Technology, Department of Computing
-Hubbot - The GitHub repository retriever
-Version {__version__}, (c) 2018-2021 {__authors__}
+Hubbot version {__version__} - The GitHub repository retriever
+(c) 2018-2021 {__authors__}
 """
 
 SCRIPTNAME  = os.path.basename(__file__)
 LOGLEVEL    = logging.INFO  # logging.[DEBUG|INFO|WARNING|ERROR|CRITICAL]
+CONFIG_FILE = "app.conf"
+
+def read_config_file(cfgfile: str):
+    """Reads (with ConfigParser()) '[Application]' and creates global variables. Argument 'cfgfile' has to be a filename only (not path + file) and the file must exist in the same directory as this script."""
+    cfgfile = os.path.join(
+        os.path.split(os.path.realpath(__file__))[0],
+        cfgfile
+    )
+    if not os.path.exists(cfgfile):
+        raise FileNotFoundError(f"Configuration file '{cfgfile}' not found!")
+    import configparser
+    cfg = configparser.ConfigParser()
+    cfg.optionxform = lambda option: option # preserve case
+    cfg.read(cfgfile)
+    for k, v in cfg.items('Application'):
+        globals()[k] = v
 
 class Database():
     def __init__(self, cstring: str):
         self.cstring = cstring
 
     def get_passed_deadlines(self):
-        with psycopg.connect(cstring) as conn:
+        sql = """
+        SELECT      * 
+        FROM        assignment 
+        WHERE       handler = %s
+        AND         deadline < NOW()
+        """
+        with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT * FROM assignment WHERE handler=%s AND deadline<%s", ('HUBBOT', datetime.datetime.now())
+                    sql,
+                    ('HUBBOT',)
                 )
             return [dict(zip([key[0] for key in cur.description], row)) for row in cur]
 
-    def get_course_students(self, course_id):
-        with psycopg.connect(cstring) as conn:
+    def get_submissionless_students(self, assignment:dict) -> list:
+        sql = """
+        SELECT      * 
+        FROM        enrollee
+        WHERE       course_id=%(course_id)s 
+        AND         status='active'
+        AND         github_account IS NOT NULL
+        AND         uid NOT IN (
+                    SELECT uid
+                    FROM submission
+                    WHERE assignment_id=%(assignment_id)s
+                    AND course_id=%(course_id)s
+                    )
+        """
+
+        with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT * FROM enrollee WHERE course_id=%s AND status=%s", (course_id, 'active')
+                    sql, 
+                    assignment
                 )
             return [dict(zip([key[0] for key in cur.description], row)) for row in cur]
-
-    def submission_exists(self, assignment_id, course_id, uid):
-        with psycopg.connect(cstring) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT * FROM submission WHERE assignment_id=%s AND course_id=%s AND uid=%s", (assignment_id, course_id, uid)
-                )
-            if cur.rowcount == 0:
-                return False
-            else:
-                return True
-
-    def filter_students(self, assignment):
-        enrollees = self.get_course_students(assignment['course_id'])
-        return [student for student in enrollees if not self.submission_exists(
-            assignment['assignment_id'], assignment['course_id'], student['uid']
-            ) and  not student['github_account'] == 'NULL']
 
     def get_assignment(self, assignment_id, course_id):
-        with psycopg.connect(cstring) as conn:
+        sql = """
+        SELECT  * 
+        FROM    assignment 
+        WHERE   assignment_id=%s 
+        AND     course_id=%s
+        """
+        with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT * FROM assignment WHERE assignment_id=%s AND course_id=%s", (assignment_id, course_id)
+                    sql,
+                    (assignment_id, course_id)
                 )
-            return [dict(zip([key[0] for key in cur.description], row)) for row in cur][0]
+            return dict(zip([key[0] for key in cur.description], cur.fetchone()))
     
     def get_enrollee(self, course_id, uid):
-        with psycopg.connect(cstring) as conn:
+        with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT * FROM enrollee WHERE course_id=%s AND uid=%s", (course_id, uid)
                 )
-            return [dict(zip([key[0] for key in cur.description], row)) for row in cur][0]
+            return dict(zip([key[0] for key in cur.description], cur.fetchone()))
 
-    def register_submission(self, student, assignment, timestamp):
-        # Resolve penalty
-        #
-        # NOTE: Ask Jani how to handle penalty (esp. None)
-        #  - should there be a default or is None logged to submission as well
-        days_late = (timestamp - assignment['deadline']).days
-        assignment_penalty = assignment['latepenalty']
-        if assignment_penalty is None:
-            assignment_penalty = 1
-        penalty = days_late * assignment_penalty
-
+    def register_submission(self, student:dict, assignment:dict):
         sql = """
         INSERT INTO submission (
             assignment_id, 
@@ -134,7 +149,7 @@ class Database():
         VALUES (%s, %s, %s, %s, %s, %s)
         """
 
-        with psycopg.connect(cstring) as conn:
+        with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     sql,
@@ -142,16 +157,38 @@ class Database():
                         assignment['assignment_id'],
                         assignment['course_id'],
                         student['uid'],
-                        student['github_account'],
-                        timestamp,
+                        'submission content',
+                        datetime.datetime.now(),
                         'draft'
                     )
                 )
+
+def processer(
+        cmd: str,
+        shell: bool = False,
+        stdout = subprocess.DEVNULL,
+        stderr = subprocess.DEVNULL    
+        ):
+        """Call .subprocess("ls", stdout = subprocess.PIPE), if you want output. Otherwise the output is sent to /dev/null."""        
+        if not shell:
+            # Set empty double-quotes as empty list item            
+            # Required for commands like; ssh-keygen ... -N ""           
+            cmd = ['' if i == '""' or i == "''" else i for i in cmd.split(" ")]
+        prc = subprocess.run(
+            cmd,
+            shell  = shell,
+            stdout = stdout,
+            stderr = stderr        
+        )
+        # Non-zero return code indicates an error        
+        if prc.returncode:
+            raise ValueError(
+                f"code: {prc.returncode}, command: '{cmd}'"            )
+        # Return output (stdout, stderr)
+        return (
+            prc.stdout.decode("utf-8") if stdout == subprocess.PIPE else None,
+            prc.stderr.decode("utf-8") if stderr == subprocess.PIPE else None        )
         
-
-
-
-                
 
 if __name__ == '__main__':
 
@@ -188,8 +225,15 @@ if __name__ == '__main__':
     log.addHandler(handler)
 
     # WORK HERE
-    dbname = 'schooner'
-    dbuser = 'schooner'
+    try:
+        read_config_file(CONFIG_FILE)
+    except Exception as ex:
+        print(f"Error reading site configuration '{CONFIG_FILE}'")
+        print(str(ex))
+        os._exit(-1)
+
+    dbname = DB_NAME
+    dbuser = DB_USER
     dbpass = False
 
     args, _ = argparser.parse_known_args()
@@ -207,90 +251,100 @@ if __name__ == '__main__':
         assignment = db.get_assignment(assignment_id, course_id)
         student = db.get_enrollee(course_id, uid)
 
-        clonedir = os.path.join('/srv/schooner/submissions')
-        tgt = os.path.join(clonedir, f"{datetime.datetime.now().strftime('%Y-%m-%d')}_{assignment['assignment_id']}")
+        clonedir = SUBMISSION_DIRECTORY
+        tgt = os.path.join(
+            clonedir, 
+            course_id, 
+            uid, 
+            assignment['assignment_id']            
+            )
+
         if not os.path.exists(tgt):
             os.makedirs(tgt)
+
+        fetchdate = datetime.datetime.now().strftime('%Y-%m-%d')
+        fetchfile = f'{tgt}/{fetchdate}.txt'
 
         #
         # Create a session object with the user creds in-built
         #
-        load_dotenv('.env')
-        token = os.environ.get("GH_TOKEN")
-        user = os.environ.get("GH_USER")
+        token = GH_TOKEN
+        user = GH_USER
         gh_session = requests.Session()
         gh_session.auth = (user, token)
 
         #
         # Fetch repository contents list through API call
         # Note: if repository is not found (does not exist or bot user is not collaborator), call returns only a 'Not found' message
-        #
+        # log fetch in {date}.log
         try:
-            src = f"https://{token}:x-oauth-basic@github.com/{student['github_account']}/DTE20068.git"
-            repo_contents = json.loads(gh_session.get(f"https://api.github.com/repos/{student['github_account']}/DTE20068/contents/").text)
+            src = f"https://{token}:x-oauth-basic@github.com/{student['github_account']}/{student['github_repository']}.git"
+            repo_contents = json.loads(gh_session.get(f"https://api.github.com/repos/{student['github_account']}/{student['github_repository']}/contents/").text)
             if 'message' in repo_contents:
                 if repo_contents['message'] == 'Not Found':
-                    exit(f"Github user ({student['github_account']}) or repository not found")
+                    status = f"Student {student['uid']}: Github user ({student['github_account']}"
+                    with open(fetchfile, 'a') as log_fetch:
+                        log_fetch.write(status)
+                    log.info(status)
+                    os._exit(-1)
         except Exception as e:
-            exit(str(e))
+            log.exception(str(e))
+            os._exit(-1)
         
         #
         # Clone only if required folder is found from repo
         #
         filenames = [file['name'] for file in repo_contents]
-        print(filenames)
         if assignment['assignment_id'] not in filenames:
-            exit(f"Required folder ({assignment['assignment_id']}) not found in student repository")
+            status = f"Required folder ({assignment['assignment_id']}) not found in student repository"
+            log.info(status)
+            with open(fetchfile, 'a') as log_fetch:
+                log_fetch.write(status)
+            os._exit(-1)
 
         #
         # Fetch should happen once in a day - if path  already exists, something is wrong.
-        # For ease of testing, the old repo is now removed but this should be changed later.
+        # For ease of testing, the old repo is now removed but this could be changed later.
         #
-        submission_repo = os.path.join(tgt, student['uid'])
+        submission_repo = os.path.join(tgt, fetchdate)
         if os.path.exists(submission_repo):
             print("Submission path already exists and will be overwritten")
             shutil.rmtree(submission_repo)
-            #exit("Submission path for student already exists")
 
         try: 
-            git.Git(tgt).clone(src, student['uid'])
-            db.register_submission(student, assignment, datetime.datetime.now())
+            git.Git(tgt).clone(src, fetchdate)
+            db.register_submission(student, assignment)
+            # create symbolic link to evaluator home folder
+            # os.symlink(f"{tgt}/{fetchdate}", dst)
+            status = "fetch successful"
+            with open(fetchfile, 'a') as log_fetch:
+                log_fetch.write(status)
         except Exception as e:
-            exit(str(e))
+            with open(fetchfile, 'a') as log_fetch:
+                log_fetch.write(str(e))
+            log.exception(str(e))
 
     else:
         errors = []
         try:
-            log.info("Testing database connection")
-            cstring = f"dbname={dbname} user={dbuser}"
-            if dbpass:
-                cstring += f" password={dbpass}"
+            log.info("Running dispatcher")
 
-            db = Database(cstring)
+            # Using local authentication -- password is never used
+            db = Database(f"dbname={dbname} user={dbuser}")
             assignments = db.get_passed_deadlines()
             filtered_students = []
 
             for assignment in assignments:
                 if (datetime.datetime.now() - assignment['deadline']).days < 5:
-                    filtered_students = db.filter_students(assignment)
+                    filtered_students = db.get_submissionless_students(assignment)
 
                 for student in filtered_students:
                     try:
-                        cloner = subprocess.Popen(
-                            [
-                            'python',
-                            'hubbot.py', 
-                            '--clone', 
-                            assignment['course_id'], 
-                            assignment['assignment_id'],
-                            student['uid']
-                            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            universal_newlines=True
-                        )
-                        for line in cloner.stdout:
+                        clone = processer(f"python hubbot.py --clone {assignment['course_id']} {assignment['assignment_id']} {student['uid']}")
+                        if not clone[1] == None:
                             errors.append({
                                 'id': student['uid'],
-                                'error': str(line)
+                                'error': str(clone[1] )
                             })
                     except Exception as e:
                         errors.append({

@@ -79,53 +79,40 @@ class Database():
                     ON submission.course_id = assignment.course_id
         WHERE       state = 'draft'
         """
-        with psycopg.connect(cstring) as conn:
+        with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     sql
                 )
             return [dict(zip([key[0] for key in cur.description], row)) for row in cur]
         
-    def set_enrollee_account(self, submission):
-        uid             = submission['uid']
-        github_account  = submission['content']
-        course_id       = submission['course_id']
-        assignment_id   = submission['assignment_id']
-        points          = submission['points']
+    def set_enrollee_account(self, submission:dict):
 
         sql_update_enrollee = """
         UPDATE      enrollee
-        SET         github_account  = %s
-        WHERE       uid             = %s
-        AND         course_id       = %s
+        SET         github_account  = %(content)s,
+                    github_repository =%(github_repository)s
+        WHERE       uid             = %(uid)s
+        AND         course_id       = %(course_id)s
         """
         sql_update_submission = """
         UPDATE      submission
-        SET         score           = %s,
-                    state           = %s,
-                    evaluator       = %s
-        WHERE       uid             = %s
-        AND         course_id       = %s
-        AND         assignment_id   = %s
+        SET         score           = %(points)s,
+                    state           = 'accepted',
+                    evaluator       = 'HUBREG'
+        WHERE       uid             = %(uid)s
+        AND         course_id       = %(course_id)s
+        AND         assignment_id   = %(assignment_id)s
         """
 
-        with psycopg.connect(cstring) as conn:
+        with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    sql_update_enrollee, (
-                        github_account, 
-                        uid, 
-                        course_id)
+                    sql_update_enrollee, submission
                 )
 
                 cur.execute(
-                    sql_update_submission, (
-                        points,
-                        'accepted',
-                        'HUBREG',
-                        uid, 
-                        course_id,
-                        assignment_id)
+                    sql_update_submission, submission
                 )
  
 if __name__ == '__main__': 
@@ -155,7 +142,6 @@ if __name__ == '__main__':
     try: 
         db = Database(cstring)
         github_account_submissions = db.get_pending_github_info()
-        print(github_account_submissions)
 
         # Check for invitations 
         token = GH_TOKEN
@@ -176,13 +162,14 @@ if __name__ == '__main__':
             for invite in invitations: 
                 repo = invite.get('repository')
                 if repo['owner']['login'] == github_account and repo['name'] == course_code:
+                    submission.update(github_repository = repo['name'])
                     submission['invite_matched'] = True
+                    db.set_enrollee_account(submission)
                     requests.patch(
                         f"{url}/{invite.get('id')}",
                         data={}, 
                         headers=headers
                     )
-                    db.set_enrollee_account(submission)
 
         #
         # TODO: handle possible cases where an invitation has already been accepted in github (if submission cannot be matched to an invite, check against existing collaborators)

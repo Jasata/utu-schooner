@@ -145,9 +145,11 @@ NOTE: Current database is written in the `psql` prompt.
 | Connect to database  | `\c`        |                                                         |
 | List tables          | `\dt [schema.]` |                                                         |
 | Current schema       |             | `SELECT current_schema();`                              |
-| List schmeas         | `\dn`       | `SELECT schema_name FROM information_schema.schemata;`  |
+| List schmas          | `\dn`       | `SELECT schema_name FROM information_schema.schemata;`  |
 | List roles           | `\du`       |                                                         |
 | DROP user            |             | `DROP OWNED BY {user}; DROP USER {user};`               |
+| List functions       | `\dt [schema.]` |  |
+| List sequences       | `\ds [schema.]` |  |
 
 ## Drop Database
 
@@ -160,7 +162,23 @@ WHERE     pg_stat_activity.datname = 'schooner'
           pid <> pg_backend_pid();
 DROP DATABASE schooner;
 ```
+## Idiotic SERIAL -types ("auto increment")
 
+Special kind of stupid infected PostgreSQL developers in v.8.2. With these column types, the implicit sequence **is not accessible** to anyone except the object owner, and need to have permissions explicitly granted:
+```sql
+GRANT USAGE, SELECT ON email_email_id_seq TO "www-data";
+```
+_However, for me, this did NOT solve the permission errors... All these tables remain unusable!_
+
+Unsurprisingly, since version 10, a replacement has been provided:
+```sql
+email_id            INTEGER         GENERATED ALWAYS AS IDENTITY,
+```
+This **works**, and should be used instead. Syntax is: `GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY [ ( sequence_options ) ]` where
+- `ALWAYS` will use the sequence _always_, except if the INSERT statement specifies `OVERRIDING SYSTEM VALUE`. 
+- `BY DEFAULT` allows user-specified value to take precedence.
+
+**IMPORTANT! `AS IDENTITY` DOES NOT MAKE THE COLUMN PRIMARY KEY!**
 
 ## PL/Python - Python Procedural Language
 

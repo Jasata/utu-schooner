@@ -7,6 +7,8 @@
 --  2021-08-13  Initial version.
 --  2021-08-17  Updated.
 --  2021-08-19  .github_account and .github_repository in enrollee.
+--  2021-08-20  BIGINT PKs changed to INT.
+--  2021-08-22  SERIAL changed to INTEGER GENERATED ALWAYS AS IDENTITY.
 --
 -- Execute as 'schooner' (for ownership)
 
@@ -220,6 +222,7 @@ CREATE TABLE assignment
     handler             VARCHAR(8)      NULL,
     points              INTEGER         NOT NULL,
     pass                INTEGER         NULL,
+    retries             INTEGER         NULL DEFAULT 0,
     deadline            TIMESTAMP       NOT NULL,
     latepenalty         NUMERIC(2,2)    NULL,
     PRIMARY KEY (assignment_id, course_id),
@@ -232,13 +235,10 @@ CREATE TABLE assignment
         ON UPDATE CASCADE
         ON DELETE SET NULL,
     CONSTRAINT assignment_pass_lte_points
-        CHECK (pass IS NULL OR pass <= points)
+        CHECK (pass IS NULL OR pass <= points),
+    CONSTRAINT assignment_retries_chk
+        CHECK (retries IS NULL OR retries >= 0)
 );
--- Allow only one 'HUBREG' assignment per course
-CREATE UNIQUE INDEX assignment_single_hubreg_idx
-ON assignment (course_id, handler)
-WHERE (handler = 'HUBREG');
-
 GRANT ALL PRIVILEGES ON assignment TO schooner_dev;
 GRANT SELECT ON assignment TO "www-data";
 
@@ -254,12 +254,19 @@ COMMENT ON COLUMN assignment.points IS
 'Maximum points that can be earned from the assignment.';
 COMMENT ON COLUMN assignment.pass IS
 'Minimum points to pass the assignment. Zero if any submission will do and NULL if the assignment is optional.';
+COMMENT ON COLUMN assignment.retries IS
+'Number of allowed retries after the first submission. Zero means no retries (only one submission allowed). NULL means unlimited.';
 COMMENT ON COLUMN assignment.deadline IS
 'NOTE: Current implementation ignores time part. Date during which the assignment must be submitted.';
 COMMENT ON COLUMN assignment.latepenalty IS
 'NULL if there is no soft-deadline. Otherwise, the penalty in percentages for each late day.';
 
-
+-- Allow only one 'HUBREG' assignment per course
+CREATE UNIQUE INDEX assignment_single_hubreg_idx
+    ON assignment (course_id, handler)
+    WHERE (handler = 'HUBREG');
+COMMENT ON INDEX assignment_single_hubreg_idx IS
+'Unique index ensuring that no course will have more than one ''HUBREG'' assignment.';
 
 
 --
@@ -267,7 +274,7 @@ COMMENT ON COLUMN assignment.latepenalty IS
 --
 CREATE TABLE submission
 (
-    submission_id       BIGSERIAL       PRIMARY KEY,
+    submission_id       INTEGER         GENERATED ALWAYS AS IDENTITY,
     assignment_id       VARCHAR(8)      NOT NULL,
     course_id           VARCHAR(16)     NOT NULL,
     uid                 VARCHAR(10)     NOT NULL,
@@ -278,7 +285,8 @@ CREATE TABLE submission
     evaluator           VARCHAR(10)     NULL,
     score               INTEGER         NULL,
     feedback            VARCHAR(10000)  NULL,
-    confidential_notes  VARCHAR(5000)   NULL,
+    confidential        VARCHAR(5000)   NULL,
+    PRIMARY KEY (submission_id),
     FOREIGN KEY (assignment_id, course_id)
         REFERENCES assignment (assignment_id, course_id)
         ON UPDATE CASCADE
@@ -298,24 +306,25 @@ CREATE TABLE submission
 GRANT ALL PRIVILEGES ON submission TO schooner_dev;
 GRANT SELECT, INSERT, UPDATE ON submission TO "www-data";
 
+
 COMMENT ON TABLE submission IS
 'Table structure does not prevent multiple submissions for each assignment. This must be possible, especially for the exam and its three attempts.';
 COMMENT ON COLUMN submission.content IS
 'Submission content can be path to file(s), identifier, actual submission from student - depending on the type of assignment.';
 COMMENT ON COLUMN submission.state IS
-'One of values "draft", "rejected", "accepted". Draft means that the submission requires evaluation (both .evaluator and .score must be NULL) while rejected and accepted mean that the submission is handled/evaluated (.evaluator and .score must have values). NOTE that accepted/rejected does not concern itself with the assignment.pass (minimum required score). To be rejected, something in the submission must prevent normal evaluation and a new submission is required.';
+'One of "draft", "rejected", or "accepted". Draft means that the submission requires evaluation (both .evaluator and .score must be NULL) while rejected and accepted mean that the submission is handled/evaluated (.evaluator and .score must have values). NOTE that accepted/rejected does not concern itself with the assignment.pass (minimum required score). To be rejected, something in the submission must prevent normal evaluation and a new submission is required.';
 COMMENT ON COLUMN submission.evaluator IS
 'SSO ID or handler.code of the evaluator. Handler codes are in capital letters, SSO ID is in lower case.';
 COMMENT ON COLUMN submission.score IS
 'Given score for the submission. Database does not limit the maximum (assignment.points) - this is a design decision that allows bonus points to be awarded. Any enforcement is left for the application code.';
 COMMENT ON COLUMN submission.feedback IS
 'Personal feedback from the evaluator.';
-COMMENT ON COLUMN submission.confidential_notes IS
+COMMENT ON COLUMN submission.confidential IS
 'Confidential notes shared between teachers and assistants. NOT SENT TO STUDENT!';
 
 -- PostgreSQL does not support SQL triggers (surprisingly).
 -- Each requires a trigger function...
-CREATE OR REPLACE FUNCTION trfnc_submission_bru()
+CREATE OR REPLACE FUNCTION tf_submission_bru()
     RETURNS TRIGGER
     LANGUAGE PLPGSQL
 AS $$
@@ -329,17 +338,77 @@ CREATE TRIGGER submission_bru
     BEFORE UPDATE
     ON submission
     FOR EACH ROW
-    EXECUTE PROCEDURE trfnc_submission_bru();
+    EXECUTE PROCEDURE tf_submission_bru();
 
 
 
+CREATE OR REPLACE FUNCTION tf_submission_bri()
+    RETURNS TRIGGER
+    LANGUAGE PLPGSQL
+AS $$
+-- This trigger does not concern itself with deadlines.
+-- Submissions past their deadlines are accepted.
+-- Application code needs to deal with them accordingly.
+DECLARE
+    v_retries       INT;
+    v_submissions   INT;
+    v_drafts        INT;
+BEGIN
+    SELECT      assignment.retries
+    FROM        assignment
+    WHERE       assignment_id = NEW.assignment_id
+                AND
+                course_id = NEW.course_id
+    INTO v_retries;
+    SELECT      COUNT(submission_id),
+                SUM(
+                    CASE
+                        WHEN state = 'draft' THEN 1
+                        ELSE 0
+                    END
+                )
+    FROM        submission
+    WHERE       assignment_id = NEW.assignment_id
+                AND
+                course_id = NEW.course_id
+                AND
+                uid = NEW.uid
+    INTO        v_submissions,
+                v_drafts;
+    IF v_retries IS NOT NULL THEN
+        -- Enforce submission retry limit
+        IF v_submissions > v_retries THEN
+            RAISE EXCEPTION
+            'Maximum number of submissions (%) already created for course (''%'') assignment (''%'') by enrollee (''%'')!',
+            v_retries + 1, NEW.course_id, NEW.assignment_id, NEW.uid
+            USING HINT = 'RETRIES_EXHAUSTED';
+        END IF;
+    END IF;
+    -- Do not allow new submission while a 'draft' exists, regardless what the NEW.state is
+    IF v_drafts > 0 THEN
+        RAISE EXCEPTION
+        'No new submissions are accepted while ''draft'' submission exists!'
+        USING HINT = 'DRAFT_EXISTS';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER submission_bri
+    BEFORE INSERT
+    ON submission
+    FOR EACH ROW
+    EXECUTE PROCEDURE tf_submission_bri();
+
+COMMENT ON TRIGGER submission_bri ON submission IS
+'Trigger limits the number of submissions based on assignment.retries (NULL = unlimited). It also prevents inserting new submissions if ''draft'' exists. They must be evaluated into ''acceted'' or ''rejected'' before new can be entered.';
 
 --
 -- Emails
 --
 CREATE TABLE email
 (
-    email_id            BIGSERIAL       PRIMARY KEY,
+    email_id            INTEGER         GENERATED ALWAYS AS IDENTITY,
     course_id           VARCHAR(16)     NULL,
     uid                 VARCHAR(10)     NULL,
     sent_from           VARCHAR(64)     NOT NULL,
@@ -350,6 +419,7 @@ CREATE TABLE email
     created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by          TEXT            NOT NULL DEFAULT CURRENT_USER,
     sent_at             TIMESTAMP       NULL,
+    PRIMARY KEY (email_id),
     FOREIGN KEY (course_id, uid)
         REFERENCES enrollee (course_id, uid)
         ON UPDATE CASCADE
@@ -376,7 +446,7 @@ COMMENT ON COLUMN email.state IS
 
 CREATE TABLE email_attachment
 (
-    email_id            BIGINT          NOT NULL,
+    email_id            INT             NOT NULL,
     name                VARCHAR(255)    NOT NULL,
     content             BYTEA           NOT NULL,
     FOREIGN KEY (email_id)
@@ -396,3 +466,5 @@ COMMENT ON COLUMN email_attachment.name IS
 COMMENT ON COLUMN email_attachment.content IS
 'Binary content of the attachment. BUT IS TEXT BETTER, IF CONTENT IS ENCODED ANYWAY?';
 
+
+-- EOF

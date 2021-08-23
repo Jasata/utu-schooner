@@ -1,6 +1,6 @@
 --
 -- Schooner - Simple Course Management System
--- dev_data.sql / Development and testing data set
+-- core.dev_data.sql / Development and testing data set
 -- University of Turku / Faculty of Technology / Department of Computing
 -- Jani Tammi <jasata@utu.fi>
 --
@@ -30,6 +30,7 @@ VALUES
     'HUBREG',
     1,
     1,
+    NULL,
     '2022-10-30',
     NULL
 ),
@@ -41,6 +42,7 @@ VALUES
     NULL,
     1,
     1,
+    0,
     '2022-10-27',
     NULL
 ),
@@ -52,6 +54,7 @@ VALUES
     'HUBBOT',
     40,
     NULL,
+    0,
     '2022-11-07',
     NULL
 ),
@@ -63,6 +66,7 @@ VALUES
     'HUBBOT',
     60,
     NULL,
+    0,
     '2022-11-14',
     NULL
 ),
@@ -74,6 +78,7 @@ VALUES
     'HUBBOT',
     80,
     NULL,
+    0,
     '2022-11-21',
     NULL
 ),
@@ -85,6 +90,7 @@ VALUES
     'HUBBOT',
     100,
     NULL,
+    0,
     '2022-11-28',
     NULL
 ),
@@ -96,6 +102,7 @@ VALUES
     'HUBBOT',
     100,
     NULL,
+    0,
     '2022-12-05',
     NULL
 ),
@@ -107,6 +114,7 @@ VALUES
     'HUBBOT',
     120,
     NULL,
+    0,
     '2022-12-12',
     NULL
 ),
@@ -118,6 +126,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2022-10-31',
     NULL
 ),
@@ -129,6 +138,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2022-11-07',
     NULL
 ),
@@ -140,6 +150,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2022-11-14',
     NULL
 ),
@@ -151,6 +162,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2022-11-21',
     NULL
 ),
@@ -162,6 +174,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2022-11-28',
     NULL
 ),
@@ -173,6 +186,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2022-12-05',
     NULL
 ),
@@ -184,6 +198,7 @@ VALUES
     'APLUS',
     35,
     NULL,
+    0,
     '2022-12-12',
     NULL
 ),
@@ -195,6 +210,7 @@ VALUES
     NULL,
     8,
     8,
+    0,
     '2022-12-12',
     NULL
 ),
@@ -206,6 +222,7 @@ VALUES
     NULL,
     245,
     147,
+    2,
     '2022-12-12',
     NULL
 );
@@ -236,6 +253,7 @@ VALUES
     'HUBREG',
     1,
     1,
+    NULL,
     '2021-08-25',
     NULL
 ),
@@ -247,6 +265,7 @@ VALUES
     NULL,
     1,
     1,
+    0,
     '2021-08-03',
     NULL
 ),
@@ -258,6 +277,7 @@ VALUES
     'HUBBOT',
     40,
     20,
+    2,
     '2021-08-24',
     NULL
 ),
@@ -269,6 +289,7 @@ VALUES
     'HUBBOT',
     60,
     NULL,
+    2,
     '2021-09-04',
     NULL
 ),
@@ -280,11 +301,12 @@ VALUES
     NULL,
     220,
     140,
+    2,
     '2021-11-21',
     NULL
 );
 
--- For Dummies course
+-- Poems course
 INSERT INTO course
 VALUES
 (
@@ -307,6 +329,7 @@ VALUES
     NULL,
     40,
     40,
+    0,
     '2021-08-05',
     NULL
 ),
@@ -318,6 +341,7 @@ VALUES
     NULL,
     40,
     40,
+    0,
     '2021-08-12',
     NULL
 );
@@ -438,3 +462,4 @@ VALUES
     33
 );
 
+-- EOF
