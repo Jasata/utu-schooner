@@ -11,7 +11,8 @@
 #   2019-12-22  .authenticated and .validate().
 #   2020-01-01  Only "enabled" teachers get teacher role.
 #   2020-01-01  Chanced to 'active' / 'inactive' status values.
-#   2021-08-17  Modified for Schooner schema
+#   2021-08-17  Modified for Schooner application / PostgreSQL.
+#   2021-08-23  Modified for 'core' schema.
 #
 # Module replies on Flash.session to maintain UID and ROLE variables.
 # Possible states are:
@@ -118,7 +119,7 @@ class SSO:
             #session['UID'] = self.__get_hashed_uid(request)
         # Query DB to determine teacher/student role
         if self.session['UID'] is not None and not self.session.get('ROLE'):
-            sql = f"SELECT * FROM admin WHERE uid = '{self.session['UID']}' "
+            sql = f"SELECT * FROM core.admin WHERE uid = '{self.session['UID']}' "
             sql += "AND status = 'active'"
             try:
                 cursor = g.db.cursor()

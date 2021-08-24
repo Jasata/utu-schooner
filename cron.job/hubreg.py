@@ -63,15 +63,15 @@ class Database():
                     assignment.code,
                     submission.uid,
                     submission.content
-        FROM        submission
+        FROM        core.submission
                     INNER JOIN 
                     (
                             SELECT      assignment.assignment_id, 
                                         assignment.course_id,
                                         assignment.points,
                                         course.code
-                            FROM        course
-                            INNER JOIN  assignment
+                            FROM        core.course
+                            INNER JOIN  core.assignment
                             ON          assignment.course_id = course.course_id
                             WHERE       handler = 'HUBREG'
                             AND         deadline > NOW()
@@ -89,14 +89,14 @@ class Database():
     def set_enrollee_account(self, submission:dict):
 
         sql_update_enrollee = """
-        UPDATE      enrollee
+        UPDATE      core.enrollee
         SET         github_account  = %(content)s,
                     github_repository =%(github_repository)s
         WHERE       uid             = %(uid)s
         AND         course_id       = %(course_id)s
         """
         sql_update_submission = """
-        UPDATE      submission
+        UPDATE      core.submission
         SET         score           = %(points)s,
                     state           = 'accepted',
                     evaluator       = 'HUBREG'

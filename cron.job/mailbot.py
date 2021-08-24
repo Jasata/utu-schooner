@@ -3,10 +3,19 @@
 
 import os
 import time
-import smtplib
+
 import psycopg
 import logging
 import logging.handlers
+
+import smtplib
+import email
+
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 
 SCRIPTNAME  = os.path.basename(__file__)
 LOGLEVEL    = logging.INFO  # logging.[DEBUG|INFO|WARNING|ERROR|CRITICAL]
@@ -34,7 +43,7 @@ class Database():
     def get_email_queue(self):
         sql = """
         SELECT      * 
-        FROM        email 
+        FROM        email.message 
         WHERE       state = 'queued'
         """
         with psycopg.connect(self.cstring) as conn:
@@ -70,21 +79,25 @@ if __name__ == '__main__':
         os._exit(-1)
     
     db = Database(f"dbname={DB_NAME} user={DB_USER}")
-    print(db.get_email_queue())
+    queue = db.get_email_queue()
+    for queued_mail in queue:
 
-    sender = 'tumipo@utu.fi'
-    receivers = ['tumipo@utu.fi']
+        body        = queued_mail['body']
+        sender      = f"{queued_mail['course_id']} <{queued_mail['sent_from']}>"
+        receiver    = queued_mail['sent_to']
 
-    message = """From: Tuisku
-    To: To Tuisku
-    Subject: SMTP test
+        # Create a multipart message and set headers
+        message = MIMEMultipart()
+        message["From"]     = sender
+        message["To"]       = receiver
+        message["Subject"]  = queued_mail['subject']
 
-    This is a test message.
-    """
+        message.attach(MIMEText(body, "plain"))
+        mail = message.as_string()
 
-    try:
-        smtpObj = smtplib.SMTP('localhost')
-        smtpObj.sendmail(sender, receivers, message)         
-        print("email sent")
-    except SMTPException:
-        print("failed to send")
+        try:
+            smtpObj = smtplib.SMTP('localhost')
+            smtpObj.sendmail(sender, receiver, mail)         
+            print("email sent")
+        except Exception as e:
+            print(str(e))

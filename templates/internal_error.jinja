@@ -1,0 +1,13 @@
+{% extends 'layout.jinja' %}
+{#
+    For displaying server errors of all kind
+
+    REQUIRES
+        title
+        message
+        
+#}
+{% block content %}
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+{% endblock %}

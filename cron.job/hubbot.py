@@ -78,7 +78,7 @@ class Database():
     def get_passed_deadlines(self):
         sql = """
         SELECT      * 
-        FROM        assignment 
+        FROM        core.assignment 
         WHERE       handler = %s
         AND         deadline < NOW()
         """
@@ -93,7 +93,7 @@ class Database():
     def get_submissionless_students(self, assignment:dict) -> list:
         sql = """
         SELECT      * 
-        FROM        enrollee
+        FROM        core.enrollee
         WHERE       course_id=%(course_id)s 
         AND         status='active'
         AND         github_account IS NOT NULL
@@ -116,7 +116,7 @@ class Database():
     def get_assignment(self, assignment_id, course_id):
         sql = """
         SELECT  * 
-        FROM    assignment 
+        FROM    core.assignment 
         WHERE   assignment_id=%s 
         AND     course_id=%s
         """
@@ -132,13 +132,13 @@ class Database():
         with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT * FROM enrollee WHERE course_id=%s AND uid=%s", (course_id, uid)
+                    "SELECT * FROM core.enrollee WHERE course_id=%s AND uid=%s", (course_id, uid)
                 )
             return dict(zip([key[0] for key in cur.description], cur.fetchone()))
 
     def register_submission(self, student:dict, assignment:dict):
         sql = """
-        INSERT INTO submission (
+        INSERT INTO core.submission (
             assignment_id, 
             course_id, 
             uid,
@@ -314,8 +314,7 @@ if __name__ == '__main__':
         try: 
             git.Git(tgt).clone(src, fetchdate)
             db.register_submission(student, assignment)
-            # create symbolic link to evaluator home folder
-            # os.symlink(f"{tgt}/{fetchdate}", dst)
+            os.symlink(f"{tgt}/{fetchdate}", f"{tgt}/accepted")
             status = "fetch successful"
             with open(fetchfile, 'a') as log_fetch:
                 log_fetch.write(status)

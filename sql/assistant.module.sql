@@ -4,8 +4,11 @@
 -- University of Turku / Faculty of Technology / Department of Computing
 -- Jani Tammi <jasata@utu.fi>
 --
---  2021-08-13  Placeholder with 'assistant' table only.
+--  2021-08-13  Placeholder with 'assistant' table.
+--  2021-08-22  Evaluation tables and functions.
+--  2021-08-23  Fixes for 'core' schema.
 --
+\echo 'Creating schema assistant'
 DROP SCHEMA IF EXISTS assistant CASCADE;
 CREATE SCHEMA assistant;
 GRANT USAGE ON SCHEMA assistant TO "www-data";
@@ -14,6 +17,7 @@ GRANT USAGE ON SCHEMA assistant TO schooner_dev;
 --
 -- Assistant module configuration
 --
+\echo '=== assistant.config'
 CREATE TABLE assistant.config
 (
     rowlock             BOOL            NOT NULL PRIMARY KEY DEFAULT TRUE,
@@ -39,6 +43,8 @@ COMMENT ON COLUMN assistant.config.rowlock IS
 COMMENT ON COLUMN assistant.config.token_duration IS
 'Time which is added to CURRENT_TIMESTAMP when accesstoken -table row is inserted.';
 
+
+\echo '=== assistant.assistant'
 CREATE TABLE assistant.assistant
 (
     course_id           VARCHAR(32)     NOT NULL,
@@ -48,7 +54,7 @@ CREATE TABLE assistant.assistant
     status              active_t        NOT NULL DEFAULT 'active',
     PRIMARY KEY (course_id, assistant_uid),
     FOREIGN KEY (course_id)
-        REFERENCES public.course (course_id)
+        REFERENCES core.course (course_id)
         ON UPDATE CASCADE
         ON DELETE CASCADE,
     CONSTRAINT assistant_course_unq
@@ -60,7 +66,7 @@ GRANT SELECT ON assistant.assistant TO "www-data";
 COMMENT ON TABLE assistant.assistant IS
 'Assistants for each course implementation.';
 COMMENT ON COLUMN assistant.assistant.status IS
-'UTU ID/username of the assistant.':
+'UTU ID/username of the assistant.';
 COMMENT ON COLUMN assistant.assistant.status IS
 'Assistant can be temporarily set to inactive status to avoid assigning exercise evaluations into his work queue.';
 COMMENT ON COLUMN assistant.assistant.name IS
@@ -75,6 +81,7 @@ COMMENT ON COLUMN assistant.assistant.name IS
 --          started IS NOT NULL AND ended IS NULL
 --      2) Assistant completes evaluation
 --          started IS NOT NULL AND ended IS NOT NULL
+\echo '=== assistant.evaluation'
 CREATE TABLE assistant.evaluation
 (
     submission_id       INT             NOT NULL PRIMARY KEY,
@@ -83,7 +90,7 @@ CREATE TABLE assistant.evaluation
     started             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ended               TIMESTAMP       NULL,
     FOREIGN KEY (submission_id)
-        REFERENCES submission (submission_id)
+        REFERENCES core.submission (submission_id)
         ON UPDATE CASCADE
         ON DELETE CASCADE,
     FOREIGN KEY (course_id, assistant_uid)
@@ -99,7 +106,6 @@ CREATE TABLE assistant.evaluation
 );
 GRANT ALL PRIVILEGES ON assistant.evaluation TO schooner_dev;
 GRANT SELECT ON assistant.evaluation TO "www-data";
--- INSERT removed, functions run as SECURITY DEFINER
 
 COMMENT ON TABLE assistant.evaluation IS
 'This table is inserted with a row when the evaluation of a submission begins, and it is updated with the .ended once the evaluation is complete. For work queue management, not having a row in this table means that the submission is available for evaluation, having a row without .ended value means that evaluation is in progress and having .ended value means that the submission has been evaluated.';
@@ -107,6 +113,7 @@ COMMENT ON COLUMN assistant.evaluation.assistant_uid IS
 'User ID of the assistant.';
 
 
+\echo '=== assistant.accesstoken'
 CREATE TABLE assistant.accesstoken
 (
     submission_id       INT         NOT NULL,
@@ -129,6 +136,7 @@ COMMENT ON COLUMN assistant.accesstoken.expires IS
 -- Pseudo encrypt - For generating non-colliding unique pseudo-random values
 --
 -- SELECT x, pseudo_encrypt(x) FROM generate_series(1, 12) AS x;
+\echo '=== assistant.pseudo_encrypt()'
 CREATE OR REPLACE FUNCTION
 assistant.pseudo_encrypt(
     value   INT
@@ -173,12 +181,13 @@ Source: https://wiki.postgresql.org/wiki/Pseudo_encrypt';
 --
 -- Workqueue management functions
 --
+\echo '=== assistant.evaluation_begin()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_begin(
     in_assistant_uid    VARCHAR(10),
-    in_submission_id    INT
+    in_submission_id    INTEGER
 )
-    RETURNS INT
+    RETURNS INTEGER
     LANGUAGE PLPGSQL
     SECURITY DEFINER
     VOLATILE
@@ -209,7 +218,7 @@ DECLARE
     r_submission        RECORD;
     r_assistant         RECORD;
     r_evaluation        RECORD;
-    v_accesstoken       INT;
+    v_accesstoken       INTEGER;
     v_token_duration    TIME;
 BEGIN
     -- Query token duration from config
@@ -224,7 +233,7 @@ BEGIN
     END IF;
     -- LOCK submission row
     PERFORM     *
-    FROM        submission
+    FROM        core.submission
     WHERE       submission_id = in_submission_id
     FOR UPDATE;
     -- LOCK evaluation table
@@ -232,7 +241,7 @@ BEGIN
 
     -- Submission must exist and be in 'draft' state
     SELECT      *
-    FROM        submission
+    FROM        core.submission
     WHERE       submission_id = in_submission_id
     INTO        r_submission;
     IF NOT FOUND THEN
@@ -327,12 +336,12 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_begin TO "www-data";
 GRANT EXECUTE ON FUNCTION assistant.evaluation_begin TO schooner_dev;
 
 
-
+\echo '=== assistant.evaluation_close()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_close(
     in_assistant_uid    VARCHAR(10),
-    in_submission_id    INT,
-    in_score            INT,
+    in_submission_id    INTEGER,
+    in_score            INTEGER,
     in_feedback         TEXT,
     in_confidential     TEXT
 )
@@ -353,12 +362,12 @@ DECLARE
     r_assistant         RECORD;
     r_evaluation        RECORD;
     r_assignment        RECORD;
-    v_row_count         INT;
+    v_row_count         INTEGER;
     v_closing_datetime  TIMESTAMP := CURRENT_TIMESTAMP;
 BEGIN
     -- LOCK submission row
     PERFORM     *
-    FROM        submission
+    FROM        core.submission
     WHERE       submission_id = in_submission_id
     FOR UPDATE;
     -- LOCK evaluation table
@@ -366,7 +375,7 @@ BEGIN
 
     -- Submission must exist and be in 'draft' state
     SELECT      *
-    FROM        submission
+    FROM        core.submission
     WHERE       submission_id = in_submission_id
     INTO        r_submission;
     IF NOT FOUND THEN
@@ -422,7 +431,7 @@ BEGIN
 
     -- Check given score against assignment maximum
     SELECT      *
-    FROM        assignment
+    FROM        core.assignment
     WHERE       assignment_id = r_submission.assignment_id
                 AND
                 course_id = r_submission.course_id
@@ -442,7 +451,7 @@ BEGIN
     --
     -- Update submission and evaluation, remove access token
     --
-    UPDATE  submission
+    UPDATE  core.submission
     SET     state           = 'accepted',
             evaluator       = in_assistant_uid,
             score           = in_score,
@@ -482,11 +491,11 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_close TO "www-data";
 GRANT EXECUTE ON FUNCTION assistant.evaluation_close TO schooner_dev;
 
 
-
+\echo '=== assistant.evaluation_reject()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_reject(
     in_assistant_uid    VARCHAR(10),
-    in_submission_id    INT,
+    in_submission_id    INTEGER,
     in_feedback         TEXT,
     in_confidential     TEXT
 )
@@ -500,7 +509,7 @@ DECLARE
     r_submission        RECORD;
     r_assistant         RECORD;
     r_evaluation        RECORD;
-    v_row_count         INT;
+    v_row_count         INTEGER;
     v_closing_datetime  TIMESTAMP := CURRENT_TIMESTAMP;
 BEGIN
     -- LOCK submission row
@@ -530,7 +539,7 @@ BEGIN
 
     -- Submission must exist and be in 'draft' state
     SELECT      *
-    FROM        submission
+    FROM        core.submission
     WHERE       submission_id = in_submission_id
     INTO        r_submission
     FOR UPDATE;
@@ -589,7 +598,7 @@ BEGIN
     --
     -- Update submission and evaluation, remove access token
     --
-    UPDATE  submission
+    UPDATE  core.submission
     SET     state           = 'rejected',
             evaluator       = in_assistant_uid,
             score           = 0,

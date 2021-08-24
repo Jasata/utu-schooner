@@ -32,13 +32,6 @@ WITH
     LOGIN
     PASSWORD NULL;
 
-CREATE DATABASE schooner
-WITH
-    OWNER = schooner;
-
-COMMENT ON DATABASE schooner IS
-'Schooner - Simple course management system';
-
 -- Developer role
 CREATE ROLE schooner_dev
 WITH
@@ -58,10 +51,22 @@ CREATE USER jasata
 WITH
     PASSWORD 'T0kkur1';
 
+GRANT schooner_dev TO tumipo;
+GRANT schooner_dev TO jasata;
+
+--
+-- Database
+--
+CREATE DATABASE schooner
+WITH
+    OWNER = schooner;
+
+COMMENT ON DATABASE schooner IS
+'Schooner - Simple course management system';
+
+
 GRANT CONNECT ON DATABASE schooner TO "www-data";
 GRANT CONNECT ON DATABASE schooner TO schooner_dev;
 
-GRANT schooner_dev TO tumipo;
-GRANT schooner_dev TO jasata;
 
 -- EOF

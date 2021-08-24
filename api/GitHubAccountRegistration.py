@@ -18,7 +18,7 @@ from flask import g
 
 
 class GitHubAccountRegistration(dict):
-    """GitHub account registration data object. Dot-notation access dict with default key '*'. Returns value for key '*' for missing missing keys, or None if '*' value has not been set."""
+    """GitHub account registration object. Typical HUBREG -handler assignment (Github account registration assignment) accepts unlimited number of submissions (allowing the student to change the account and/or repository, for whatever reason). For application point-of-view, the newest submission for this assignment is what is interesting, and older submissions are disregarded."""
 
 
     def __custom_get__(self, key):
@@ -40,45 +40,53 @@ class GitHubAccountRegistration(dict):
         """Load object with registration data."""
         SQL = """
             SELECT      course.course_id,
+                        course.code AS course_code,
+                        course.name AS course_name,
                         course.opens AS course_opens,
                         course.closes AS course_closes,
                         enrollee.uid,
                         CASE
-                            WHEN enrollee.studentid IS NULL THEN 'n'
-                            ELSE 'y'
-                        END AS has_enrolled,
-                        CASE
                             WHEN submission.assignment_id IS NULL THEN 'n'
                             ELSE 'y'
-                        END AS has_submission,
+                        END AS github_account_submitted,
+                        assignment.assignment_id,
+                        assignment.deadline AS deadline,
                         enrollee.github_account,
                         enrollee.github_repository,
-                        assignment.assignment_id,
-                        submission.content,
-                        submission.state,
-                        submission.evaluator,
-                        submission.score,
-                        submission.created,
-                        submission.modified
+                        submission.content AS submission_content,
+                        submission.state AS submission_state,
+                        submission.evaluator AS submission_evaluator,
+                        submission.score AS submission_score,
+                        submission.created AS submission_created,
+                        submission.modified AS submission_modified
             FROM        (
                             SELECT      *
-                            FROM        enrollee
+                            FROM        core.enrollee
                             WHERE       uid = %(uid)s
                                         AND
                                         course_id = %(course_id)s
-                        ) enrollee RIGHT OUTER JOIN course
+                        ) enrollee RIGHT OUTER JOIN core.course
                         ON (enrollee.course_id = course.course_id)
                         LEFT OUTER JOIN (
-                            -- Unique index guarantees that there can be only one (or none) 'HUBREG' assignments
+                            -- Unique index guarantees that there can be
+                            -- only one (or none) 'HUBREG' assignments
                             SELECT      assignment.*
-                            FROM        assignment
+                            FROM        core.assignment
                             WHERE       handler = 'HUBREG'
                         ) assignment
                         ON (course.course_id = assignment.course_id)
                         LEFT OUTER JOIN (
                             SELECT      *
-                            FROM        submission
-                            WHERE       uid = %(uid)s
+                            FROM        core.submission
+                            WHERE       created = (
+                                            SELECT      MAX(created)
+                                            FROM        core.submission s
+                                            WHERE       s.uid = %(uid)s
+                                                        AND
+                                                        s.course_id = submission.course_id
+                                                        AND
+                                                        s.assignment_id = submission.assignment_id
+                                        )
                         ) submission
                         ON (
                             assignment.course_id = submission.course_id
@@ -114,5 +122,59 @@ class GitHubAccountRegistration(dict):
     def is_open(self):
         """True unless registration-assignment deadline has been passed?"""
         return True if self.deadline > datetime.datetime.now() else False
+
+
+    def submit(self, account_name: str):
+        """Updates existing 'draft' state submission, or if one doesn't exist, inserts a new one."""
+        # First try to update 'draft' submission, if no affected rows, then insert
+        UPDATE = """
+            UPDATE      core.submission
+            SET         content         = %(account_name)s
+            WHERE       uid             = %(uid)s
+                        AND
+                        assignment_id   = %(assignment_id)s
+                        AND
+                        course_id       = %(course_id)s
+                        AND
+                        state           = 'draft'
+        """
+        INSERT = """
+            INSERT INTO core.submission (course_id, assignment_id, uid, content)
+            VALUES (%(course_id)s, %(assignment_id)s,  %(uid)s, %(account_name)s)
+        """
+        args = {
+            **{k: self[k] for k in self.keys() & ('course_id', 'assignment_id', 'uid')},
+            'account_name' : account_name
+        }
+        # {**self, **locals()}
+        with g.db.cursor() as c:
+            if not c.execute(UPDATE, args).rowcount:
+                if not c.execute(INSERT, args).rowcount:
+                    raise ValueError(
+                        """Failed to create GitHub account registration submission! course_id: {course_id}, assignment_id: {assignmen_id}, uid: {uid}""".format(self)
+                    )
+                else:
+                    g.db.commit()
+                    return "inserted something!"
+            else:
+                g.db.commit()
+                return "Updated ..something!"
+        return args
+
+
+
+
+
+if __name__ == '__main__':
+
+    # MUST execute as local user 'schooner'
+    import psycopg
+    from flask import Flask
+    app = Flask(__name__)
+    with app.app_context():
+        if not hasattr(g, 'db'):
+            g.db = psycopg.connect("dbname=schooner user=schooner")
+        r = GitHubAccountRegistration('DTE20068-3002', 'lazy')
+        print(r)
 
 # EOF

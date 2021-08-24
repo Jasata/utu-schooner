@@ -580,3 +580,5 @@ if __name__ == '__main__':
     rg = GitHubAccountRegistration('DTE20068-3003', 'jasata')
     print("Registration is", "open" if rg.is_open else "closed")
     """
+
+

@@ -8,7 +8,7 @@
 --  2021-08-22  Updated for assignment.retries.
 --
 
-INSERT INTO course
+INSERT INTO core.course
 VALUES
 (
 'DTE20068-3002',
@@ -26,7 +26,7 @@ Passing the course requires:
 - Component kit has been returned.'
 );
 
-INSERT INTO assignment
+INSERT INTO core.assignment
 VALUES
 (
     'T01',

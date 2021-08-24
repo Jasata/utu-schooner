@@ -35,7 +35,7 @@ class Enrollee(dict):
         """Queries enrollee data."""
         SQL = """
             SELECT      *
-            FROM        enrollee
+            FROM        core.enrollee
             WHERE       course_id = %(course_id)s
                         AND
                         uid = %(uid)s
@@ -60,14 +60,14 @@ class Enrollee(dict):
             return []
         SQL = """
             SELECT  gitcourse.*
-            FROM    enrollee
+            FROM    core.enrollee
                     INNER JOIN
                     (
                         SELECT      course.*
-                        FROM        course
+                        FROM        core.course
                         WHERE       course_id IN (
                                         SELECT      course_id
-                                        FROM        assignment
+                                        FROM        core.assignment
                                         WHERE       handler = 'HUBREG'
                                     )
                     ) gitcourse

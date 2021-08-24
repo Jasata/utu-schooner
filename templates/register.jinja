@@ -1,16 +1,56 @@
 {% extends 'layout.jinja' %}
+{#
+    Accept GitHub account registration.
+
+    REQUIRES
+        title: str
+        uid: str
+        registration: dict (GitHubAccountRegistration)
+        
+#}
 
 {% block content %}
     <div>
-        <form action="/register.html" method="post">
-        <input type="hidden" name="cid" value="{{ course_id }}">
-        <input type="text" name="github" value="{{ enrollee.github_account if enrollee.github_account }}">
-        {% if enrollee.github_account %}
-            <button>Update</button>
+        <h2>{{ registration.course_code }} {{ registration.course_name }}</h2>
+        <p>
+            Course duration: {{ registration.course_opens.strftime('%d.%m.%Y') }} - {{ registration.course_closes.strftime('%d.%m.%Y') }}<br>
+            GitHub account registration open until: {{ registration.deadline.strftime('%d.%m.%Y') }}
+        </p>
+        <p>
+    {% if registration.github_account %}
+            Previously registered: git@github.com:{{ registration.github_account }}/{{ registration.github_repository }}.git
+    {% else %}
+            No GitHub account has yet been registered for this course.
+    {% endif %}
+        </p>
+        <p>
+            Please type your GitHub account name only:<br>
+            <form action="/register.html" method="post">
+            <input type="hidden" name="cid" value="{{ registration.course_id }}">
+    {% if registration.github_account_submitted == 'y' and registration.submission_state == 'draft' %}
+            <input
+                type="text"
+                name="account_name"
+                maxlength="39"
+                size="39"
+                value="{{ registration.submission_content if registration.submission_content }}">
+            <button>Update</button><br>
+            <i>Submitted on {{ registration.submission_created.strftime('%d.%m.%Y %H:%m:%S') }}, but not yet registered. Have you sent the collaborator invitation?</i>
+    {% else %}
+            <input
+                type="text"
+                name="account_name"
+                maxlength="39"
+                size="39"
+                value="">
+        {% if registration.github_account %}
+            <button>Change Registration</button>
         {% else %}
             <button>Register</button>
         {% endif %}
-        </form>
+    {% endif %}
+            </form>
+        </p>
     </div>
     <div>Note that updating the github account is possible only until the
     collaborator invitation has been successfully accepted. This feature is

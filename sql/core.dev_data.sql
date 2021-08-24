@@ -5,10 +5,11 @@
 -- Jani Tammi <jasata@utu.fi>
 --
 --  2021-08-19  Initial version.
+--  2021-08-23  Changed to schema 'core'.
 --
 
 -- Future DTE20068 (2022)
-INSERT INTO course
+INSERT INTO core.course
 VALUES
 (
 'DTE20068-3003',
@@ -20,7 +21,7 @@ VALUES
 'Future implementation.'
 );
 
-INSERT INTO assignment
+INSERT INTO core.assignment
 VALUES
 (
     'T01',
@@ -230,7 +231,7 @@ VALUES
 
 
 -- For Dummies course
-INSERT INTO course
+INSERT INTO core.course
 VALUES
 (
 'DTE20000-3002',
@@ -243,7 +244,7 @@ VALUES
 );
 
 
-INSERT INTO assignment
+INSERT INTO core.assignment
 VALUES
 (
     'T01',
@@ -307,7 +308,7 @@ VALUES
 );
 
 -- Poems course
-INSERT INTO course
+INSERT INTO core.course
 VALUES
 (
 'DTE20002-3002',
@@ -319,7 +320,7 @@ VALUES
 'Become proficient in poems and haikus to gain additional edge when competing for job opportunities.'
 );
 
-INSERT INTO assignment
+INSERT INTO core.assignment
 VALUES
 (
     'T01',
@@ -350,7 +351,7 @@ VALUES
 --
 -- Enrollments
 --
-INSERT INTO enrollee
+INSERT INTO core.enrollee
 (
     course_id,
     uid,
@@ -414,7 +415,7 @@ VALUES
 --
 -- Submissions
 --
-INSERT INTO submission
+INSERT INTO core.submission
 (
     assignment_id,
     course_id,

@@ -14,7 +14,8 @@
 #   2020-09-09  Add /api/file/flow  (Flow.js GET, POST upload endpoint)
 #   2020-09-12  Add /sse/flow-upload-status
 #   2020-09-23  Clean obsolete code
-#   2021-08-17  Modified for Schooner
+#   2021-08-17  Modified for Schooner / PostgreSQL
+#   2021-08-23  Added /register.html handler
 #
 #
 #   This Python module only defines the routes, which the application.py
@@ -268,48 +269,122 @@ def register_get():
     """Render page to enter GitHub account."""
     parameters = {
         'course_id' : request.args.get('cid'),
-        'title'     : 'Register GitHub Account',
+        'title'     : 'GitHub Account Registration',
         'uid'       : sso.uid,
         'assignment': ''
     }
 
-    if not parameters['uid']:
+    try:
+        if not parameters['uid']:
+            return flask.render_template(
+                'please_login.jinja',
+                **parameters
+            )
+        elif not parameters['course_id']:
+            gitcourses = api.Enrollee.gitcourseids(parameters['uid'])
+            app.logger.debug(f"Git Courses: {str(gitcourses)}")
+            return flask.render_template(
+                'choose_course.jinja',
+                courselist = gitcourses,
+                **parameters
+            )
+        else:
+            # Render edit/enter view
+            return flask.render_template(
+                'register.jinja',
+                registration = api.GitHubAccountRegistration(
+                    parameters['course_id'],
+                    parameters['uid']
+                ),
+                **parameters
+            )
+    except Exception as e:
         return flask.render_template(
-            'please_login.jinja',
-            **parameters
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
         )
-    elif not parameters['course_id']:
-        gitcourses = api.Enrollee.gitcourseids(parameters['uid'])
-        app.logger.debug(f"Git Courses: {str(gitcourses)}")
-        return flask.render_template(
-            'choose_course.jinja',
-            courselist = gitcourses,
-            **parameters
-        )
-    else:
-        # Render edit/enter view
-        return flask.render_template(
-            'register.jinja',
-            enrollee = api.Enrollee(parameters['course_id'], parameters['uid']),
-            course = api.Course(parameters['course_id']),
-            **parameters
-        )
+
 
 
 @app.route('/register.html', methods=['POST'])
 def register_post():
-    """Accept GitHub account registration."""
+    """Accept GitHub account registration. This interface operates on 'draft' submissions, either creating one or updating an existing 'draft', but NEVER changing the submission state - that is for the HUBREG to do when it matches the enrollee-submitted GitHub account name and a pending collaborator invitation."""
+    import string
+    # Expects:
+    #       form['cid']             course.course_id
+    #       form['account_name']    enrollee.github_account
+    requiredkeys = ("cid", "account_name")
+    # GitHub allowed characters. We'll use it also for the course_id...
+    allowedchars = list(
+        string.ascii_lowercase +
+        string.ascii_uppercase +
+        string.digits +
+        '.-_'
+    )
     try:
-        course = api.GitHubAccountRegistration(
-            flask.request.form['cid'],
-            sso.uid
+        # Require authenticated session
+        if not sso.is_authenticated:
+            raise ValueError(
+                f"Session must be authenticated to submit! Please login."
+            )
+        # process FORM data
+        issues = []
+        data = request.form.to_dict(flat = True)
+        for key in requiredkeys:
+            if key not in data:
+                issues.append(
+                    f"Form does not contain key '{key}'"
+                )
+        if issues:
+            raise ValueError(
+                f"Malformed POST data: {', '.join(issues)}"
+            )
+        # Strip characters not in allowedchars
+        for key in data.keys():
+            data[key] = "".join(c for c in data[key] if c in allowedchars)
+        if len(data['account_name']) < 1:
+            raise ValueError(
+                f"Submitted account name cannot be empty!"
+            )
+        # Add SSO ID
+        data['uid'] = sso.uid
+    except Exception as e:
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
+        )
+    # Application logic
+    try:
+        r = api.GitHubAccountRegistration(
+            data['cid'],
+            data['uid']
         )
         app.logger.info(
-            f"Course ('{course.course_id}') is on-going: {str(course.is_ongoing)}")
+            f"""Course's ('{r.course_id}') GitHub registration is{("not", "")[int(r.is_open)]} open."""
+        )
+        # If registration is not open (assignment.deadline passed)
+        if not r.is_open:
+            return flask.render_template(
+                "registration_error.html",
+                title = "Account registration is no longer open",
+                message = f"""GitHub account registration assignment deadline ('{r.deadline}') for course '{r.course_id}' has closed and no new submissions can be accepted."""
+            )
+        #
+        # Save submitted account name
+        #
+        app.logger.debug(r.submit(data['account_name']))
+        # To-be replaced with redirec()
+        return flask.redirect(f"/register.html?cid={data['cid']}")
     except Exception as e:
-        # TODO: Log exception somewhere we can SEE it!
+        # TODO: Log exception somewhere we can SEE it! Like... log -table?
         app.logger.exception(f"Unable to handle GitHub registration! {str(e)}")
-        return flask.render_template('server_error.jinja')
+        return flask.render_template(
+            'registration_error.jinja',
+            title = "Registration Error",
+            message = str(e)
+        )
 
 
 

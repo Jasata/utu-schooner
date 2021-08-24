@@ -29,7 +29,7 @@ DO $$
 DECLARE
     v_submission_id     INT;
 BEGIN
-    INSERT INTO submission
+    INSERT INTO core.submission
     VALUES
     (
         DEFAULT,
@@ -53,7 +53,7 @@ $$;
 
 
 
-DROP FUNCTION assistant.test;
+--DROP FUNCTION assistant.test;
 CREATE OR REPLACE FUNCTION
 assistant.test(
     in_submission_id  INT

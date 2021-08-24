@@ -151,7 +151,7 @@ NOTE: Current database is written in the `psql` prompt.
 | List functions       | `\dt [schema.]` |  |
 | List sequences       | `\ds [schema.]` |  |
 
-## Drop Database
+## Recreating the Database
 
 Drop all connections prior to dropping the database (execute as `postgres`):
 ```sql
@@ -162,13 +162,23 @@ WHERE     pg_stat_activity.datname = 'schooner'
           pid <> pg_backend_pid();
 DROP DATABASE schooner;
 ```
-## Idiotic SERIAL -types ("auto increment")
+
+**NOTE:** There is an easier way. As local user `postgres`:
+```shell
+
+```
+
+# PostgreSQL Features
+
+This section makes some notes about some of the PostgreSQL features, their problems and/or their usage, based on our experiences.
+
+## Do NOT Use SERIAL -types ("auto increment")
 
 Special kind of stupid infected PostgreSQL developers in v.8.2. With these column types, the implicit sequence **is not accessible** to anyone except the object owner, and need to have permissions explicitly granted:
 ```sql
 GRANT USAGE, SELECT ON email_email_id_seq TO "www-data";
 ```
-_However, for me, this did NOT solve the permission errors... All these tables remain unusable!_
+_However, for me, this did NOT solve the permission errors... All these tables remained unusable!_
 
 Unsurprisingly, since version 10, a replacement has been provided:
 ```sql
@@ -178,7 +188,26 @@ This **works**, and should be used instead. Syntax is: `GENERATED { ALWAYS | BY 
 - `ALWAYS` will use the sequence _always_, except if the INSERT statement specifies `OVERRIDING SYSTEM VALUE`. 
 - `BY DEFAULT` allows user-specified value to take precedence.
 
-**IMPORTANT! `AS IDENTITY` DOES NOT MAKE THE COLUMN PRIMARY KEY!**
+**IMPORTANT! `AS IDENTITY` DOES NOT MAKE THE COLUMN AUTOMATICALLY PRIMARY KEY!**
+
+## Unsigned Integers
+
+PostgreSQL has none. Use of `DOMAIN` is suggested:
+```sql
+CREATE DOMAIN uint AS INT4
+   CONSTRAINT uint_not_negative_chk
+   CHECK (VALUE IS NULL OR VALUE >= 0);
+```
+But that doesn't seem to work as adverticed:
+```sql
+SELECT (-1::uint);
+ ?column? 
+----------
+       -1
+(1 row)
+```
+**Our solution:** We will use table constraints to enforce intended value ranges.
+
 
 ## PL/Python - Python Procedural Language
 
@@ -189,4 +218,27 @@ To install PL/Python in a particular database, use `CREATE EXTENSION plpythonu` 
 PL/Python is only available as an “untrusted” language, meaning it does not offer any way of restricting what users can do in it and is therefore named `plpythonu` (the `u` suffix). A trusted variant `plpython` might become available in the future if a secure execution mechanism is developed in Python. The writer of a function in untrusted PL/Python must take care that the function cannot be used to do anything unwanted, since it will be able to do anything that could be done by a user logged in as the database administrator. Only superusers can create functions in untrusted languages such as `plpythonu`.
 
 Alternatively, look into [PL/pgSQL](https://www.postgresql.org/docs/11/plpgsql.html).
+
+# Schooner Database
+
+## Schema Modules
+
+Structure for database (`schooner`) has been split into schemas:
+
+- `core`, containing course instance data (grading system, assignments) and enrollee data (limited personal details and submissions to assignments).
+- `email`, which consists of message templates and set/queued messages.
+- `assistant`: structures to manage evaluation work queues.
+- _Rule and Conditions_. Yet-to-be started portion, which will model conditions that can prevent progressing in the course until certain tasks or score criteria have been satisfied. (This will be 2022 addition)
+
+## Users / Roles
+
+_In PostgreSQL, USER is just a ROLE with a connect privilege._
+
+- `schooner` USER  
+  Owner of the database and objects. Used by `cron` jobs. Local authentication (no need for passwords).
+- `www-data` USER  
+  Used by uWSGI (Flask middleware). Has limited privileges.
+- `schooner_dev` ROLE  
+  Developer role that should have all privileges to all Schooner schemas and objects (if not, fix it!).
+
 

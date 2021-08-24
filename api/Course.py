@@ -34,7 +34,7 @@ class Course(dict):
         """Course implementation."""
         SQL = """
             SELECT      *
-            FROM        course
+            FROM        core.course
             WHERE       course_id = %(course_id)s
         """
         with g.db.cursor() as c:
