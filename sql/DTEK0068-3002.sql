@@ -1,36 +1,51 @@
 --
 -- Schooner - Simple Course Management System
--- DTE20068-3002.sql / Course instance for P2/2021
+-- DTEK0068-3002.sql / Course instance for P2/2021
 -- University of Turku / Faculty of Technology / Department of Computing
 -- Jani Tammi <jasata@utu.fi>
 --
 --  2021-08-13  Initial version.
 --  2021-08-22  Updated for assignment.retries.
+--  2021-08-25  Updated DTE2 -> DTEK & new columns.
 --
 
+\echo '=== INSERT''ing DTEK0068-3002...'
 INSERT INTO core.course
+(
+    course_id,
+    code,
+    name,
+    email,
+    enrollment_message,
+    opens,
+    closes,
+    gradesys_id,
+    description
+)
 VALUES
 (
-'DTE20068-3002',
-'DTE20068',
-'Embedded Microprocessor Systems',
-'2021-10-25',
-'2021-12-20',
-'0-5/60',
-'Exercise privilege is automatically earned once total of 355 points has been earned.
+    'DTEK0068-3002',
+    'DTEK0068',
+    'Embedded Microprocessor Systems',
+    'dtek0068@utu.fi',
+    'DTEK0068-3002_WELCOME',
+    '2021-10-25',
+    '2021-12-19',
+    '0-5/60',
+    'Exercise privilege is automatically earned once total of 355 points has been earned.
 
-Passing the course requires:
-- 60% of the total course points (600 points).
-- Attendance at VM Workshop (27.10.2021).
-- 60% score in the exam.
-- Component kit has been returned.'
+    Passing the course requires:
+    - 60% of the total course points (600 points).
+    - Attendance at VM Workshop (27.10.2021).
+    - 60% score in the exam.
+    - Component kit has been returned.'
 );
 
 INSERT INTO core.assignment
 VALUES
 (
     'T01',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
     'HUBREG',
@@ -42,7 +57,7 @@ VALUES
 ),
 (
     'T02',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'VM Workshop',
     'Component Kit distribution',
     NULL,
@@ -54,7 +69,7 @@ VALUES
 ),
 (
     'E01',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 2 Exercise',
     'Blink a LED',
     'HUBBOT',
@@ -66,7 +81,7 @@ VALUES
 ),
 (
     'E02',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 3 Exercise',
     'Read ADC',
     'HUBBOT',
@@ -78,7 +93,7 @@ VALUES
 ),
 (
     'E03',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 4 Exercise',
     'ISR & Timer',
     'HUBBOT',
@@ -90,7 +105,7 @@ VALUES
 ),
 (
     'E04',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 5 Exercise',
     'Servo and PID',
     'HUBBOT',
@@ -102,7 +117,7 @@ VALUES
 ),
 (
     'E05',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 6 Exercise',
     'FreeRTOS',
     'HUBBOT',
@@ -114,7 +129,7 @@ VALUES
 ),
 (
     'E06',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 7 Exercise',
     'Run for the hills!',
     'HUBBOT',
@@ -126,7 +141,7 @@ VALUES
 ),
 (
     'Q01',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 1 Quizz',
     NULL,
     'APLUS',
@@ -138,7 +153,7 @@ VALUES
 ),
 (
     'Q02',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 2 Quizz',
     NULL,
     'APLUS',
@@ -150,7 +165,7 @@ VALUES
 ),
 (
     'Q03',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 3 Quizz',
     NULL,
     'APLUS',
@@ -162,7 +177,7 @@ VALUES
 ),
 (
     'Q04',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 4 Quizz',
     NULL,
     'APLUS',
@@ -174,7 +189,7 @@ VALUES
 ),
 (
     'Q05',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 5 Quizz',
     NULL,
     'APLUS',
@@ -186,7 +201,7 @@ VALUES
 ),
 (
     'Q06',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 6 Quizz',
     NULL,
     'APLUS',
@@ -198,7 +213,7 @@ VALUES
 ),
 (
     'Q07',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Week 7 Quizz',
     NULL,
     'APLUS',
@@ -210,7 +225,7 @@ VALUES
 ),
 (
     'T03',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Component kit return',
     'Course grade cannot be sent to Peppi until loan equipment has been returned.',
     NULL,
@@ -222,7 +237,7 @@ VALUES
 ),
 (
     'EXM',
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'Exam',
     'exam.utu.fi exam, based on weekly quizzes',
     NULL,
@@ -232,3 +247,29 @@ VALUES
     '2021-12-12',
     NULL
 );
+
+INSERT INTO email.template
+VALUES
+(
+    'DTEK0068-3002_WELCOME',
+    DEFAULT,
+    'high',
+    'IMPORTANT! Required tasks before {{ course.opens.strftime(''%d.%m.%Y'') }}',
+    'Welcome to {{ course.code }} {{ course.name }}
+
+EXTREMELY IMPORTANT: Mandatory actions with a deadline!
+
+Due to the corona situation, just as last year, course will be rendered mostly as self-study remote teaching. This message should give you all the necessary information to get started on this course, so please read this carefully.
+
+This course has only one mandatory face-to-face attendance. Failure to attend will result in losing the course seat. You must attend to the VM Workshop & component kit distribution event at {{ course.opens.strftime(''%d.%m.%Y'') }}!
+
+Schedule for {{ course.opens.strftime(''%A'') }} is very tight, please try not to be late.
+
+Regards,
+{{ course.code }}
+{{ course.email }}',
+    DEFAULT,
+    NULL
+);
+
+-- EOF

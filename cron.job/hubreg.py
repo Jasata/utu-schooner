@@ -22,13 +22,11 @@
 from operator import sub
 import os 
 import time
-import datetime
 import logging 
 import logging.handlers 
  
 import psycopg
 import requests 
-import json 
 
  
 SCRIPTNAME  = os.path.basename(__file__) 
@@ -57,18 +55,15 @@ class Database():
     
     def get_pending_github_info(self):
         sql = """
-        SELECT      assignment.assignment_id, 
+        SELECT      submission.submission_id,
                     assignment.course_id,
-                    assignment.points,
                     assignment.code,
                     submission.uid,
                     submission.content
         FROM        core.submission
                     INNER JOIN 
                     (
-                            SELECT      assignment.assignment_id, 
-                                        assignment.course_id,
-                                        assignment.points,
+                            SELECT      assignment.course_id,
                                         course.code
                             FROM        core.course
                             INNER JOIN  core.assignment
@@ -87,33 +82,13 @@ class Database():
             return [dict(zip([key[0] for key in cur.description], row)) for row in cur]
         
     def set_enrollee_account(self, submission:dict):
-
-        sql_update_enrollee = """
-        UPDATE      core.enrollee
-        SET         github_account  = %(content)s,
-                    github_repository =%(github_repository)s
-        WHERE       uid             = %(uid)s
-        AND         course_id       = %(course_id)s
-        """
-        sql_update_submission = """
-        UPDATE      core.submission
-        SET         score           = %(points)s,
-                    state           = 'accepted',
-                    evaluator       = 'HUBREG'
-        WHERE       uid             = %(uid)s
-        AND         course_id       = %(course_id)s
-        AND         assignment_id   = %(assignment_id)s
+        sql = """
+        CALL core.register_github(%(submission_id)s, %(github_repository)s)
         """
 
         with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    sql_update_enrollee, submission
-                )
-
-                cur.execute(
-                    sql_update_submission, submission
-                )
+                cur.execute(sql, submission)
  
 if __name__ == '__main__': 
  
@@ -161,18 +136,22 @@ if __name__ == '__main__':
 
             for invite in invitations: 
                 repo = invite.get('repository')
-                if repo['owner']['login'] == github_account and repo['name'] == course_code:
+                if repo['owner']['login'] == github_account: # and repo['name'] == course_code:
                     submission.update(github_repository = repo['name'])
                     submission['invite_matched'] = True
+                    print(submission)
                     db.set_enrollee_account(submission)
                     requests.patch(
                         f"{url}/{invite.get('id')}",
                         data={}, 
                         headers=headers
                     )
+            url = f"https://api.github.com/repos/{submission['content']}/{submission['code']}"
 
-        #
-        # TODO: handle possible cases where an invitation has already been accepted in github (if submission cannot be matched to an invite, check against existing collaborators)
+            # TODO: handle possible cases where an invitation has already been accepted in github 
+            if not submission['invite_matched']:
+                if requests.get(url, headers=headers).status_code == 200:
+                    print("Repository found but invite already accepted in GitHub")
 
     except Exception as ex: 
         log.exception(f"Script execution error!", exec_info = False) 

@@ -10,16 +10,18 @@
 --  2021-08-20  BIGINT PKs changed to INT.
 --  2021-08-22  SERIAL changed to INTEGER GENERATED ALWAYS AS IDENTITY.
 --  2021-08-23  Schema changed to 'core'.
+--  2021-08-24  Add core.course: .email, .github_accout, and .github_accesstoken.
+--  2021-08-25  Add core.course.enrollment_message.
 --
 -- Execute as 'schooner' (for ownership)
-
--- https://www.postgresql.org/docs/9.1/datatype-enum.html
+--
 \echo 'Creating schema core'
 DROP SCHEMA IF EXISTS core CASCADE;
 CREATE SCHEMA core;
 GRANT USAGE ON SCHEMA core TO "www-data";
 GRANT USAGE ON SCHEMA core TO schooner_dev;
 
+-- https://www.postgresql.org/docs/9.1/datatype-enum.html
 CREATE TYPE active_t AS ENUM ('active', 'inactive');
 
 
@@ -115,6 +117,10 @@ CREATE TABLE core.course
     course_id           VARCHAR(16)     NOT NULL PRIMARY KEY,
     code                VARCHAR(10)     NOT NULL,
     name                VARCHAR(64)     NOT NULL,
+    email               VARCHAR(64)     NULL,
+    github_account      VARCHAR(40)     NULL,
+    github_accesstoken  VARCHAR(255)    NULL,
+    enrollment_message  VARCHAR(64)     NULL,
     opens               TIMESTAMP       NOT NULL,
     closes              TIMESTAMP       NULL,
     gradesys_id         VARCHAR(8)      NULL,
@@ -137,6 +143,14 @@ COMMENT ON COLUMN core.course.code IS
 'Course code as it appears in Study Guide. "DTE20068", for example.';
 COMMENT ON COLUMN core.course.name IS
 'Course name as it appears in the Study Guid (in English).';
+COMMENT ON COLUMN core.course.email IS
+'The email address that will appear as sender in automated email messages.';
+COMMENT ON COLUMN core.course.github_account IS
+'GitHub account created for the course. Used to retrieve student repositories / exercises.';
+COMMENT ON COLUMN core.course.github_accesstoken IS
+'GitHub access token. Generated manually and stored here for GitHub API access use.';
+COMMENT ON COLUMN core.course.enrollment_message IS
+'Template id (email.template.template_id) which is used by enrollment mechanism to send a welcome message and/or instructions.';
 COMMENT ON COLUMN core.course.opens IS
 'Use period start date. Used to determine active/on-going courses.';
 COMMENT ON COLUMN core.course.closes IS
@@ -157,12 +171,12 @@ CREATE TABLE core.enrollee
 (
     course_id           VARCHAR(16)     NOT NULL,
     uid                 VARCHAR(10)     NOT NULL,
-    github_account      VARCHAR(40)     NULL,
-    github_repository   VARCHAR(100)    NULL,
     studentid           VARCHAR(10)     NOT NULL,
-    email               VARCHAR(64)     NULL,
     lastname            VARCHAR(32)     NOT NULL,
     firstname           VARCHAR(32)     NOT NULL,
+    email               VARCHAR(64)     NULL,
+    github_account      VARCHAR(40)     NULL,
+    github_repository   VARCHAR(100)    NULL,
     created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status              active_t        NOT NULL DEFAULT 'active',
     PRIMARY KEY (course_id, uid),
@@ -489,5 +503,71 @@ $$;
 GRANT EXECUTE ON PROCEDURE core.register_github TO "www-data";
 GRANT EXECUTE ON PROCEDURE core.register_github TO schooner_dev;
 
+
+
+-- call core.enrol('DTE20068-3002', 'dodo', '9137192', 'dodo@null', 'Do', 'Doris');
+\echo '=== core.enrol()'
+CREATE OR REPLACE PROCEDURE
+core.enrol(
+    in_course_id            VARCHAR(16),
+    in_uid                  VARCHAR(10),
+    in_student_id           VARCHAR(10),
+    in_email                VARCHAR(64),
+    in_lastname             VARCHAR(32),
+    in_firstname            VARCHAR(32),
+    in_update_existing      BOOLEAN DEFAULT FALSE
+)
+    LANGUAGE PLPGSQL
+    SECURITY INVOKER
+AS $$
+BEGIN
+    PERFORM     *
+    FROM        core.enrollee
+    WHERE       course_id = in_course_id
+                AND
+                uid = in_uid
+    FOR UPDATE;
+    IF NOT FOUND THEN
+        INSERT INTO core.enrollee
+        (
+            course_id,
+            uid,
+            studentid,
+            email,
+            lastname,
+            firstname
+        )
+        VALUES
+        (
+            in_course_id,
+            in_uid,
+            in_student_id,
+            in_email,
+            in_lastname,
+            in_firstname
+        );
+    ELSE
+        IF in_update_existing THEN
+            UPDATE  core.enrollee
+            SET     studentid   = in_student_id,
+                    email       = in_email,
+                    lastname    = in_lastname,
+                    firstname   = in_firstname
+            WHERE   course_id   = in_course_id
+                    AND
+                    uid         = in_uid;
+        ELSE
+            RAISE EXCEPTION
+                'Enrollee (''%'', ''%'') already exists!',
+                in_course_id, in_uid
+                USING HINT = 'ENROLLEE_ALREDY_EXISTS';
+        END IF;
+    END IF;
+END
+$$;
+GRANT EXECUTE ON PROCEDURE core.enrol TO schooner_dev;
+
+COMMENT ON PROCEDURE core.enrol IS
+'Creates (or updates) an enrollment for a single student.';
 
 -- EOF

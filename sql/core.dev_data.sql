@@ -9,23 +9,37 @@
 --
 
 -- Future DTE20068 (2022)
+\echo '=== INSERT''ing core development data...'
 INSERT INTO core.course
+(
+    course_id,
+    code,
+    name,
+    email,
+    enrollment_message,
+    opens,
+    closes,
+    gradesys_id,
+    description
+)
 VALUES
 (
-'DTE20068-3003',
-'DTE20068',
-'Embedded Microprocessor Systems',
-'2022-10-25',
-'2022-12-20',
-'0-5/60',
-'Future implementation.'
+    'DTEK0068-3003',
+    'DTEK0068',
+    'Embedded Microprocessor Systems',
+    'dtek0068@utu.fi',
+    NULL,
+    '2022-10-25',
+    '2022-12-20',
+    '0-5/60',
+    'Future implementation.'
 );
 
 INSERT INTO core.assignment
 VALUES
 (
     'T01',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
     'HUBREG',
@@ -37,7 +51,7 @@ VALUES
 ),
 (
     'T02',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'VM Workshop',
     'Component Kit distribution',
     NULL,
@@ -49,7 +63,7 @@ VALUES
 ),
 (
     'E01',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 2 Exercise',
     'Blink a LED',
     'HUBBOT',
@@ -61,7 +75,7 @@ VALUES
 ),
 (
     'E02',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 3 Exercise',
     'Read ADC',
     'HUBBOT',
@@ -73,7 +87,7 @@ VALUES
 ),
 (
     'E03',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 4 Exercise',
     'ISR & Timer',
     'HUBBOT',
@@ -85,7 +99,7 @@ VALUES
 ),
 (
     'E04',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 5 Exercise',
     'Servo and PID',
     'HUBBOT',
@@ -97,7 +111,7 @@ VALUES
 ),
 (
     'E05',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 6 Exercise',
     'FreeRTOS',
     'HUBBOT',
@@ -109,7 +123,7 @@ VALUES
 ),
 (
     'E06',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 7 Exercise',
     'Run for the hills!',
     'HUBBOT',
@@ -121,7 +135,7 @@ VALUES
 ),
 (
     'Q01',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 1 Quizz',
     NULL,
     'APLUS',
@@ -133,7 +147,7 @@ VALUES
 ),
 (
     'Q02',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 2 Quizz',
     NULL,
     'APLUS',
@@ -145,7 +159,7 @@ VALUES
 ),
 (
     'Q03',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 3 Quizz',
     NULL,
     'APLUS',
@@ -157,7 +171,7 @@ VALUES
 ),
 (
     'Q04',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 4 Quizz',
     NULL,
     'APLUS',
@@ -169,7 +183,7 @@ VALUES
 ),
 (
     'Q05',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 5 Quizz',
     NULL,
     'APLUS',
@@ -181,7 +195,7 @@ VALUES
 ),
 (
     'Q06',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 6 Quizz',
     NULL,
     'APLUS',
@@ -193,7 +207,7 @@ VALUES
 ),
 (
     'Q07',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Week 7 Quizz',
     NULL,
     'APLUS',
@@ -205,7 +219,7 @@ VALUES
 ),
 (
     'T03',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Component kit return',
     'Course grade cannot be sent to Peppi until loan equipment has been returned.',
     NULL,
@@ -217,7 +231,7 @@ VALUES
 ),
 (
     'EXM',
-    'DTE20068-3003',
+    'DTEK0068-3003',
     'Exam',
     'exam.utu.fi exam, based on weekly quizzes',
     NULL,
@@ -232,15 +246,28 @@ VALUES
 
 -- For Dummies course
 INSERT INTO core.course
+(
+    course_id,
+    code,
+    name,
+    email,
+    enrollment_message,
+    opens,
+    closes,
+    gradesys_id,
+    description
+)
 VALUES
 (
-'DTE20000-3002',
-'DTE20000',
-'For Dummies course',
-'2021-08-01',
-'2022-10-01',
-'0-5/60',
-'For Dummies. Made by a Dummy.'
+    'DTEK0000-3002',
+    'DTEK0000',
+    'For Dummies course',
+    NULL,
+    NULL,
+    '2021-08-01',
+    '2022-10-01',
+    '0-5/60',
+    'For Dummies. Made by a Dummy.'
 );
 
 
@@ -248,7 +275,7 @@ INSERT INTO core.assignment
 VALUES
 (
     'T01',
-    'DTE20000-3002',
+    'DTEK0000-3002',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
     'HUBREG',
@@ -260,7 +287,7 @@ VALUES
 ),
 (
     'T02',
-    'DTE20000-3002',
+    'DTEK0000-3002',
     'First Lecture',
     'Mandatory first lecture of the course.',
     NULL,
@@ -271,8 +298,32 @@ VALUES
     NULL
 ),
 (
+    'Q01',
+    'DTEK0000-3002',
+    'First weekly quiz',
+    'Visit ViLLE',
+    'APLUS',
+    40,
+    20,
+    2,
+    '2021-08-29',
+    NULL
+),
+(
+    'Q02',
+    'DTEK0000-3002',
+    'Second weekly quiz',
+    'Visit ViLLE',
+    'APLUS',
+    40,
+    20,
+    2,
+    '2021-09-05',
+    NULL
+),
+(
     'E01',
-    'DTE20000-3002',
+    'DTEK0000-3002',
     'First exercise, mandatory',
     'Write Hello World',
     'HUBBOT',
@@ -284,7 +335,7 @@ VALUES
 ),
 (
     'E02',
-    'DTE20000-3002',
+    'DTEK0000-3002',
     'Second exercise, optional',
     'Write ROT13 encoder/decoder',
     'HUBBOT',
@@ -296,7 +347,7 @@ VALUES
 ),
 (
     'EXM',
-    'DTE20000-3002',
+    'DTEK0000-3002',
     'Exam',
     'exam.utu.fi exam',
     NULL,
@@ -309,22 +360,35 @@ VALUES
 
 -- Poems course
 INSERT INTO core.course
+(
+    course_id,
+    code,
+    name,
+    email,
+    enrollment_message,
+    opens,
+    closes,
+    gradesys_id,
+    description
+)
 VALUES
 (
-'DTE20002-3002',
-'DTE20002',
-'Poems and haikus for modern programmer',
-'2021-08-01',
-'2022-11-01',
-'F-P/50',
-'Become proficient in poems and haikus to gain additional edge when competing for job opportunities.'
+    'DTEK0002-3002',
+    'DTEK0002',
+    'Poems and haikus for modern programmer',
+    NULL,
+    NULL,
+    '2021-08-01',
+    '2022-11-01',
+    'F-P/50',
+    'Become proficient in poems and haikus to gain additional edge when competing for job opportunities.'
 );
 
 INSERT INTO core.assignment
 VALUES
 (
     'T01',
-    'DTE20002-3002',
+    'DTEK0002-3002',
     'First meeting',
     'Participants will create classical and modern poems.',
     NULL,
@@ -336,7 +400,7 @@ VALUES
 ),
 (
     'T02',
-    'DTE20002-3002',
+    'DTEK0002-3002',
     'Second meeting',
     'In this session, each participant will write 4 haikus and whisper them into the wind.',
     NULL,
@@ -362,7 +426,7 @@ INSERT INTO core.enrollee
 )
 VALUES
 (
-    'DTE20068-3002',
+    'DTEK0000-3002',
     'tumipo',
     506523,
     'tumipo@utu.fi',
@@ -370,7 +434,7 @@ VALUES
     'Tuisku'
 ),
 (
-    'DTE20000-3002',
+    'DTEK0002-3002',
     'tumipo',
     506523,
     'tumipo@utu.fi',
@@ -378,15 +442,7 @@ VALUES
     'Tuisku'
 ),
 (
-    'DTE20002-3002',
-    'tumipo',
-    506523,
-    'tumipo@utu.fi',
-    'Polvinen',
-    'Tuisku'
-),
-(
-    'DTE20068-3002',
+    'DTEK0000-3002',
     'jasata',
     52493,
     'jasata@utu.fi',
@@ -394,15 +450,7 @@ VALUES
     'Jani'
 ),
 (
-    'DTE20000-3002',
-    'jasata',
-    52493,
-    'jasata@utu.fi',
-    'Tammi',
-    'Jani'
-),
-(
-    'DTE20002-3002',
+    'DTEK0002-3002',
     'jasata',
     52493,
     'jasata@utu.fi',
@@ -428,7 +476,7 @@ INSERT INTO core.submission
 VALUES
 (
     'T01',
-    'DTE20068-3002',
+    'DTEK0000-3002',
     'jasata',
     'Zorro',
     'draft',
@@ -437,7 +485,7 @@ VALUES
 ),
 (
     'T02',
-    'DTE20068-3002',
+    'DTEK0000-3002',
     'jasata',
     'KIT:001',
     'accepted',
@@ -446,7 +494,7 @@ VALUES
 ),
 (
     'T02',
-    'DTE20068-3002',
+    'DTEK0000-3002',
     'tumipo',
     'KIT:002',
     'accepted',
@@ -455,7 +503,7 @@ VALUES
 ),
 (
     'Q02',
-    'DTE20068-3002',
+    'DTEK0000-3002',
     'tumipo',
     'retrieved-from-aplus',
     'accepted',

@@ -99,7 +99,7 @@ class Database():
         AND         github_account IS NOT NULL
         AND         uid NOT IN (
                     SELECT uid
-                    FROM submission
+                    FROM core.submission
                     WHERE assignment_id=%(assignment_id)s
                     AND course_id=%(course_id)s
                     )
@@ -129,10 +129,16 @@ class Database():
             return dict(zip([key[0] for key in cur.description], cur.fetchone()))
     
     def get_enrollee(self, course_id, uid):
+        sql = """
+        SELECT  * 
+        FROM    core.enrollee 
+        WHERE   course_id=%s 
+        AND     uid=%s
+        """
         with psycopg.connect(self.cstring) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT * FROM core.enrollee WHERE course_id=%s AND uid=%s", (course_id, uid)
+                    sql, (course_id, uid)
                 )
             return dict(zip([key[0] for key in cur.description], cur.fetchone()))
 
@@ -282,11 +288,11 @@ if __name__ == '__main__':
             repo_contents = json.loads(gh_session.get(f"https://api.github.com/repos/{student['github_account']}/{student['github_repository']}/contents/").text)
             if 'message' in repo_contents:
                 if repo_contents['message'] == 'Not Found':
-                    status = f"Student {student['uid']}: Github user ({student['github_account']}"
+                    status = f"Student {student['uid']}: Github user ({student['github_account']}\n"
                     with open(fetchfile, 'a') as log_fetch:
                         log_fetch.write(status)
                     log.info(status)
-                    os._exit(-1)
+                    os._exit(0)
         except Exception as e:
             log.exception(str(e))
             os._exit(-1)
@@ -296,11 +302,11 @@ if __name__ == '__main__':
         #
         filenames = [file['name'] for file in repo_contents]
         if assignment['assignment_id'] not in filenames:
-            status = f"Required folder ({assignment['assignment_id']}) not found in student repository"
+            status = f"Required folder ({assignment['assignment_id']}) not found in student repository\n"
             log.info(status)
             with open(fetchfile, 'a') as log_fetch:
                 log_fetch.write(status)
-            os._exit(-1)
+            os._exit(0)
 
         #
         # Fetch should happen once in a day - if path  already exists, something is wrong.
@@ -314,8 +320,9 @@ if __name__ == '__main__':
         try: 
             git.Git(tgt).clone(src, fetchdate)
             db.register_submission(student, assignment)
-            os.symlink(f"{tgt}/{fetchdate}", f"{tgt}/accepted")
-            status = "fetch successful"
+            if not os.path.exists(f"{tgt}/accepted"):
+                os.symlink(f"{tgt}/{fetchdate}", f"{tgt}/accepted")
+            status = "Fetch successful\n"
             with open(fetchfile, 'a') as log_fetch:
                 log_fetch.write(status)
         except Exception as e:

@@ -5,8 +5,9 @@
 -- Jani Tammi <jasata@utu.fi>
 --
 --  2021-08-20  Initial version.
+--  2021-08-25  Adjusted for new course code.
 --
-
+\echo '=== INSERT''ing assistant development data...'
 INSERT INTO assistant.assistant
 (
     course_id,
@@ -15,35 +16,33 @@ INSERT INTO assistant.assistant
 )
 VALUES
 (
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'jasata',
     'Jani Tammi'
 ),
 (
-    'DTE20068-3002',
+    'DTEK0068-3002',
     'tumipo',
     'Tuisku Polvinen'
 );
 
 DO $$
 DECLARE
-    v_submission_id     INT;
+    v_submission_id     INTEGER;
 BEGIN
     INSERT INTO core.submission
+    (
+        assignment_id,
+        course_id,
+        uid,
+        content
+    )
     VALUES
     (
-        DEFAULT,
         'E02',
-        'DTE20068-3002',
+        'DTEK0068-3002',
         'jasata',
-        'Prööt prööt',
-        DEFAULT,
-        NULL,
-        'draft',
-        NULL,
-        NULL,
-        NULL,
-        NULL
+        'Prööt prööt'
     )
     RETURNING   submission_id
     INTO        v_submission_id;
@@ -52,37 +51,5 @@ END;
 $$;
 
 
-
---DROP FUNCTION assistant.test;
-CREATE OR REPLACE FUNCTION
-assistant.test(
-    in_submission_id  INT
-)
-    RETURNS VARCHAR(10)
-    LANGUAGE PLPGSQL
-    VOLATILE
-    STRICT
-AS $$
-DECLARE
-    v_row           RECORD;
-BEGIN
-    SELECT      *
-    FROM        assistant.evaluation
-    WHERE       submission_id = in_submission_id
-    INTO        v_row;
-    IF FOUND THEN
-        RAISE NOTICE 'Evaluation record exists';
-    ELSE
-        RAISE NOTICE 'Evaluation record does not exist';
-    END IF;
-    RETURN v_row.assistant_uid;
-END
-$$;
-
-
-
-
-INSERT INTO assistant.evaluation
-VALUES (1, 'DTE20068-3002', 'jasata', CURRENT_TIMESTAMP, NULL);
 
 -- EOF

@@ -116,27 +116,6 @@ User `postgres` is the admin account for PostgreSQL:
 # sudo su - postgres
 ```
 
-### Create Database
-_All examples assume `psql` shell._
-
-```sql
-    createdb schooner;
-```
-
-```sql
-    createuser schooner;
-```
-NOTE: This appears to be `CREATE ROLE` command.
-
-```sql
-    GRANT ALL PRIVILEGES ON DATABASE schooner TO schooner;
-```
-
-```sql
-\c schooner;
-```
-NOTE: Current database is written in the `psql` prompt.
-
 ## Useful Commands
 
 | Action               | `psql`      | SQL                                                     |
@@ -153,6 +132,9 @@ NOTE: Current database is written in the `psql` prompt.
 
 ## Recreating the Database
 
+
+### Step 1 - Drop existing database
+
 Drop all connections prior to dropping the database (execute as `postgres`):
 ```sql
 SELECT    pg_terminate_backend(pg_stat_activity.pid)
@@ -165,7 +147,18 @@ DROP DATABASE schooner;
 
 **NOTE:** There is an easier way. As local user `postgres`:
 ```shell
+dropdb schooner
+```
 
+### Step 2 - Create new database
+
+Note that the users and roles are not dropped, but their privileges are gone for the dropped database. Use _selected parts of_ `sql/database.create.sql` to create the database **as `postgresql` user**.
+
+### Step 3 - Create data structures
+
+As user `schooner` (in directory `sql/`), execute:
+```shell
+./create.sh
 ```
 
 # PostgreSQL Features
