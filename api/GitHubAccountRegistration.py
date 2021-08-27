@@ -57,8 +57,8 @@ class GitHubAccountRegistration(dict):
                         submission.state AS submission_state,
                         submission.evaluator AS submission_evaluator,
                         submission.score AS submission_score,
-                        submission.created AS submission_created,
-                        submission.modified AS submission_modified
+                        submission.submitted AS submission_created,
+                        submission.accepted AS submission_modified
             FROM        (
                             SELECT      *
                             FROM        core.enrollee
@@ -78,8 +78,8 @@ class GitHubAccountRegistration(dict):
                         LEFT OUTER JOIN (
                             SELECT      *
                             FROM        core.submission
-                            WHERE       created = (
-                                            SELECT      MAX(created)
+                            WHERE       submitted = (
+                                            SELECT      MAX(submitted)
                                             FROM        core.submission s
                                             WHERE       s.uid = %(uid)s
                                                         AND
@@ -121,7 +121,7 @@ class GitHubAccountRegistration(dict):
     @property
     def is_open(self):
         """True unless registration-assignment deadline has been passed?"""
-        return True if self.deadline > datetime.datetime.now() else False
+        return True if self.deadline > datetime.date.today() else False
 
 
     def submit(self, account_name: str):

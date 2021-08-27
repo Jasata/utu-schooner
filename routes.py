@@ -362,12 +362,12 @@ def register_post():
             data['uid']
         )
         app.logger.info(
-            f"""Course's ('{r.course_id}') GitHub registration is{("not", "")[int(r.is_open)]} open."""
+            f"""Course's ('{r.course_id}') GitHub registration is{(" not", "")[int(r.is_open)]} open."""
         )
         # If registration is not open (assignment.deadline passed)
         if not r.is_open:
             return flask.render_template(
-                "registration_error.html",
+                "internal_error.jinja",
                 title = "Account registration is no longer open",
                 message = f"""GitHub account registration assignment deadline ('{r.deadline}') for course '{r.course_id}' has closed and no new submissions can be accepted."""
             )
@@ -381,19 +381,124 @@ def register_post():
         # TODO: Log exception somewhere we can SEE it! Like... log -table?
         app.logger.exception(f"Unable to handle GitHub registration! {str(e)}")
         return flask.render_template(
-            'registration_error.jinja',
+            'internal_error.jinja',
             title = "Registration Error",
             message = str(e)
         )
 
 
 
-@app.route('/assistant/list.html', methods=['GET'])
-def assistant_list_get():
-    """List """
-    # 1) Check authenticated session (sso.is_authenticated)
-    # 2) Check is assistant (list of course_id's)
-    # 3) Present list of queued submissions
+
+
+
+@app.route('/notifications.html', methods=['GET'])
+def notifications_get():
+    """Enable / disable automated email notifications."""
+    parameters = {
+        'course_id' : request.args.get('cid'),
+        'title'     : 'Enable or disable automated email notifications',
+        'uid'       : sso.uid
+    }
+
+    try:
+        if not parameters['uid']:
+            return flask.render_template(
+                'please_login.jinja',
+                **parameters
+            )
+        elif not parameters['course_id']:
+            gitcourses = api.Enrollee.gitcourseids(parameters['uid'])
+            app.logger.debug(f"Git Courses: {str(gitcourses)}")
+            return flask.render_template(
+                'choose_course.jinja',
+                courselist = gitcourses,
+                **parameters
+            )
+        else:
+            #############################################################
+            # Render edit/enter view
+            return flask.render_template(
+                'register.jinja',
+                registration = api.GitHubAccountRegistration(
+                    parameters['course_id'],
+                    parameters['uid']
+                ),
+                **parameters
+            )
+            #############################################################
+    except Exception as e:
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
+        )
+
+
+
+
+@app.route('/notifications.html', methods=['POST'])
+def notifications_post():
+    """Accept notifications configuration from user."""
+    import string
+    # Expects:
+    #       form['cid']             enrollee.course_id
+    #       form['uid']             enrollee.uid
+    requiredkeys = ("cid", "uid")
+    # GitHub allowed characters. We'll use it also for the course_id...
+    allowedchars = list(
+        string.ascii_lowercase +
+        string.ascii_uppercase +
+        string.digits +
+        '.-_'
+    )
+    try:
+        # Require authenticated session
+        if not sso.is_authenticated:
+            raise ValueError(
+                f"Session must be authenticated to submit! Please login."
+            )
+        # process FORM data
+        issues = []
+        data = request.form.to_dict(flat = True)
+        for key in requiredkeys:
+            if key not in data:
+                issues.append(
+                    f"Form does not contain key '{key}'"
+                )
+        if issues:
+            raise ValueError(
+                f"Malformed POST data: {', '.join(issues)}"
+            )
+        # Strip characters not in allowedchars
+        for key in data.keys():
+            data[key] = "".join(c for c in data[key] if c in allowedchars)
+
+    except Exception as e:
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
+        )
+    # Application logic
+    try:
+        r = api.Enrollee(
+            data['cid'],
+            data['uid']
+        )
+        #
+        # Save submitted notifications configuration
+        #
+        app.logger.debug(r.submit(data['notifications']))
+        # To-be replaced with redirec()
+        return flask.redirect(f"/register.html?cid={data['cid']}")
+    except Exception as e:
+        # TODO: Log exception somewhere we can SEE it! Like... log -table?
+        app.logger.exception(f"Unable to handle notifications configuration! {str(e)}")
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Internal Error",
+            message = str(e)
+        )
 
 
 

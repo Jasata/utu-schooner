@@ -175,6 +175,7 @@ CREATE TABLE core.enrollee
     lastname            VARCHAR(32)     NOT NULL,
     firstname           VARCHAR(32)     NOT NULL,
     email               VARCHAR(64)     NULL,
+    notifications       VARCHAR(10)     NOT NULL DEFAULT 'enabled',
     github_account      VARCHAR(40)     NULL,
     github_repository   VARCHAR(100)    NULL,
     created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -189,7 +190,9 @@ CREATE TABLE core.enrollee
     CONSTRAINT course_studentid_unq
         UNIQUE (course_id, studentid),
     CONSTRAINT course_email_unq
-        UNIQUE (course_id, email)
+        UNIQUE (course_id, email),
+    CONSTRAINT enrollee_notifications_chk
+        CHECK (notifications IN ('enabled', 'disabled'))
 );
 GRANT ALL PRIVILEGES ON core.enrollee TO schooner_dev;
 GRANT SELECT ON core.enrollee TO "www-data";
@@ -206,6 +209,8 @@ COMMENT ON COLUMN core.enrollee.studentid IS
 'Required to send grades. Possibly always numeric and up to 7 digits long. This solution acceptes strings up to 10 characters.';
 COMMENT ON COLUMN core.enrollee.email IS
 'Email should always be available from Peppi registration export, but this column may be NULL''ed, if student either does not want the email to be recorded, or prefers to make sure never to receive any notifications. Should mostly be {uid}@utu.fi';
+COMMENT ON COLUMN core.enrollee.notifications IS
+'Simple ''enabled''/''disabled'' setting that controls if the enrollee is sent automated notifications.';
 COMMENT ON COLUMN core.enrollee.status IS
 'Can be set to "inactive", if the student explicitly requests to be dropped from the course. Primarily used to enable/disable deadline email notifications.';
 
@@ -242,7 +247,7 @@ VALUES
 \echo '=== core.assignment'
 CREATE TABLE core.assignment
 (
-    assignment_id       VARCHAR(8)      NOT NULL,
+    assignment_id       VARCHAR(16)     NOT NULL,
     course_id           VARCHAR(16)     NOT NULL,
     name                VARCHAR(64)     NOT NULL,
     description         VARCHAR(5000)   NULL,
@@ -250,8 +255,8 @@ CREATE TABLE core.assignment
     points              INTEGER         NOT NULL,
     pass                INTEGER         NULL,
     retries             INTEGER         NULL DEFAULT 0,
-    deadline            TIMESTAMP       NOT NULL,
-    latepenalty         NUMERIC(2,2)    NULL,
+    deadline            DATE            NOT NULL,
+    latepenalty         DECIMAL(3,3)    NULL,
     PRIMARY KEY (assignment_id, course_id),
     FOREIGN KEY (course_id)
         REFERENCES core.course (course_id)
@@ -264,7 +269,9 @@ CREATE TABLE core.assignment
     CONSTRAINT assignment_pass_lte_points
         CHECK (pass IS NULL OR pass <= points),
     CONSTRAINT assignment_retries_chk
-        CHECK (retries IS NULL OR retries >= 0)
+        CHECK (retries IS NULL OR retries >= 0),
+    CONSTRAINT assignment_latepenalty_chk
+        CHECK (latepenalty IS NULL OR latepenalty > 0)
 );
 GRANT ALL PRIVILEGES ON core.assignment TO schooner_dev;
 GRANT SELECT ON core.assignment TO "www-data";
@@ -297,18 +304,54 @@ COMMENT ON INDEX core.assignment_single_hubreg_idx IS
 
 
 --
+-- Calculate last submission retrieval date
+--
+\echo '=== core.submission_last_retrieval_date()'
+CREATE OR REPLACE FUNCTION
+core.submission_last_retrieval_date(
+    in_deadline         DATE,
+    in_penalty          NUMERIC
+)
+    RETURNS DATE
+    LANGUAGE PLPGSQL
+    SECURITY INVOKER
+    VOLATILE
+    STRICT
+AS $$
+-- Assignment that has a deadline DATE X will be retrieved right after
+-- midnight, or X + 1.
+-- If the assignment has been defined with soft deadline (.latepenalty),
+-- the number of additional days is calculated: 
+BEGIN
+    IF in_deadline IS NULL THEN
+        RETURN NULL;
+    ELSIF in_penalty IS NULL THEN
+        RETURN in_deadline + 1;
+    END IF;
+    
+    RETURN in_deadline + CEIL(1 / in_penalty)::INTEGER;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION core.submission_last_retrieval_date TO "www-data";
+GRANT EXECUTE ON FUNCTION core.submission_last_retrieval_date TO schooner_dev;
+
+-- select course_id, assignment_id, deadline, latepenalty, core.submission_last_retrieval_date(deadline::DATE, latepenalty::DECIMAL) from core.assignment;
+
+
+
+--
 -- Submission
 --
 \echo '=== core.submission'
 CREATE TABLE core.submission
 (
     submission_id       INTEGER         GENERATED ALWAYS AS IDENTITY,
-    assignment_id       VARCHAR(8)      NOT NULL,
+    assignment_id       VARCHAR(16)     NOT NULL,
     course_id           VARCHAR(16)     NOT NULL,
     uid                 VARCHAR(10)     NOT NULL,
     content             VARCHAR(255)    NOT NULL,
-    created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    modified            TIMESTAMP       NULL,
+    submitted           TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    accepted            TIMESTAMP       NULL,
     state               VARCHAR(10)     NOT NULL DEFAULT 'draft',
     evaluator           VARCHAR(10)     NULL,
     score               INTEGER         NULL,
@@ -329,7 +372,9 @@ CREATE TABLE core.submission
         CHECK (
             (state = 'draft' AND evaluator IS NULL AND score IS NULL) OR
             (state != 'draft' AND evaluator IS NOT NULL AND score IS NOT NULL)
-        )
+        ),
+    CONSTRAINT submission_accepted_chk
+        CHECK (accepted IS NULL OR accepted >= submitted)
 );
 GRANT ALL PRIVILEGES ON core.submission TO schooner_dev;
 GRANT SELECT, INSERT, UPDATE ON core.submission TO "www-data";
@@ -339,6 +384,10 @@ COMMENT ON TABLE core.submission IS
 'Number of submissions for each assignment defined by assignment.retries. Only ''draft'' state submissions may be updated.';
 COMMENT ON COLUMN core.submission.content IS
 'Submission content can be path to file(s), identifier, actual submission from student - depending on the type of assignment.';
+COMMENT ON COLUMN core.submission.submitted IS
+'Date and time of the submission. Important for (soft)deadline and score calculations.';
+COMMENT ON COLUMN core.submission.accepted IS
+'Date and time set when the submission state becomes ''accepted''';
 COMMENT ON COLUMN core.submission.state IS
 'One of "draft", "rejected", or "accepted". Draft means that the submission requires evaluation (both .evaluator and .score must be NULL) while rejected and accepted mean that the submission is handled/evaluated (.evaluator and .score must have values). NOTE that accepted/rejected does not concern itself with the assignment.pass (minimum required score). To be rejected, something in the submission must prevent normal evaluation and a new submission is required.';
 COMMENT ON COLUMN core.submission.evaluator IS
@@ -365,7 +414,10 @@ BEGIN
         OLD.submission_id
         USING HINT = 'SUBMISSION_NOT_DRAFT';
     END IF;
-    NEW.modified = CURRENT_TIMESTAMP;
+    -- Draft becomes Accepted
+    IF NEW.state = 'accepted' THEN
+        NEW.accepted := CURRENT_TIMESTAMP;
+    END IF;
     RETURN NEW;
 END;
 $$;
@@ -426,6 +478,12 @@ BEGIN
         RAISE EXCEPTION
             'No new submissions are accepted while ''draft'' submission exists!'
             USING HINT = 'DRAFT_EXISTS';
+    END IF;
+    -- Enforce .accepted integrity
+    IF NEW.state = 'accepted' THEN
+        NEW.accepted := CURRENT_TIMESTAMP;
+    ELSE
+        NEW.accepted := NULL;
     END IF;
     RETURN NEW;
 END;
@@ -503,6 +561,73 @@ $$;
 GRANT EXECUTE ON PROCEDURE core.register_github TO "www-data";
 GRANT EXECUTE ON PROCEDURE core.register_github TO schooner_dev;
 
+\echo '=== core.submission_adjusted_score()'
+CREATE OR REPLACE FUNCTION
+core.submission_adjusted_score(
+    in_submission_id    INTEGER
+)
+    RETURNS NUMERIC
+    LANGUAGE PLPGSQL
+    SECURITY INVOKER
+    VOLATILE
+    STRICT
+AS $$
+-- Compares assignment.deadline to submission.submitted and applies
+-- latepenalty to the score.
+-- There is no need to worry about multiple submissions because this
+-- function deals with submission PK (caller's headache to pick the one).
+-- NOTE: Hubbot will record submitted values as the last second of yesterday
+-- because it runs exactly after midnight (after the deadline has been passed).
+DECLARE
+    r_submission        RECORD;
+BEGIN
+    IF in_submission_id IS NULL THEN
+        RETURN NULL;
+    END IF;
+    SELECT      submission.submitted::DATE AS submitted,
+                assignment.deadline,
+                assignment.latepenalty,
+                assignment.points AS max_score,
+                submission.score,
+                submission.state,
+                submission.submitted::DATE - assignment.deadline AS days_late
+    FROM        core.submission
+                INNER JOIN core.assignment
+                ON (
+                    submission.assignment_id = assignment.assignment_id
+                    AND
+                    submission.course_id = assignment.course_id
+                )
+    WHERE       submission_id = in_submission_id
+    INTO        r_submission;
+    IF NOT FOUND THEN
+        RETURN NULL;
+    ELSIF r_submission.score IS NULL THEN
+        RETURN NULL;
+    ELSIF r_submission.days_late <= 0 THEN
+        -- Not late, no adjustments
+        RETURN r_submission.score;
+    END IF;
+
+    -- LATE submissions
+    IF r_submission.latepenalty IS NULL THEN
+        -- Late and no soft deadline => no points!
+        RETURN 0;
+    ELSIF r_submission.days_late * r_submission.latepenalty >= 1.0 THEN
+        -- Too late for soft deadline
+        RETURN 0;
+    END IF;
+
+    -- Is late and within soft deadline
+    RETURN (
+        r_submission.score * (
+            1 - r_submission.days_late * r_submission.latepenalty
+        )
+    );
+END;
+$$;
+GRANT EXECUTE ON FUNCTION core.submission_last_retrieval_date TO "www-data";
+GRANT EXECUTE ON FUNCTION core.submission_last_retrieval_date TO schooner_dev;
 
 
 -- call core.enrol('DTE20068-3002', 'dodo', '9137192', 'dodo@null', 'Do', 'Doris');
@@ -569,5 +694,94 @@ GRANT EXECUTE ON PROCEDURE core.enrol TO schooner_dev;
 
 COMMENT ON PROCEDURE core.enrol IS
 'Creates (or updates) an enrollment for a single student.';
+
+
+-- Last accepted submission
+\echo '=== VIEW core.last_accepted_submission'
+CREATE VIEW core.last_accepted_submission AS
+SELECT		submission.submission_id,
+			submission.course_id,
+			submission.assignment_id,
+			submission.uid,
+			submission.submitted,
+			submission.submitted::DATE - assignment.deadline AS days_late,
+			assignment.latepenalty,
+			submission.score,
+			core.submission_adjusted_score(submission.submission_id) AS adjusted_score,
+			assignment.points as max_score
+FROM		core.submission
+			INNER JOIN core.assignment
+            ON (
+            	submission.assignment_id = assignment.assignment_id
+                AND
+                submission.course_id = assignment.course_id
+            )
+WHERE		submitted = (
+				SELECT		MAX(submitted)
+				FROM		core.submission s
+				WHERE		s.course_id = submission.course_id
+							AND
+							s.assignment_id = submission.assignment_id
+							AND
+							s.uid = submission.uid
+							AND
+							s.state = 'accepted'
+			);
+GRANT SELECT ON core.last_accepted_submission TO schooner_dev;
+GRANT SELECT ON core.last_accepted_submission TO "www-data";
+
+COMMENT ON VIEW core.last_accepted_submission IS
+'Please note that this view WILL show unfavorable results for students, especially if there is an accepted submission after (soft) deadline (score will be zero). Consider using view core.best_accepted_submission.';
+
+
+
+\echo '=== VIEW core.best_accepted_submission'
+CREATE VIEW core.best_accepted_submission AS
+SELECT      submission.submission_id,
+            submission.course_id,
+            submission.assignment_id,
+            submission.uid,
+            submission.submitted,
+            submission.submitted::DATE - assignment.deadline AS days_late,
+            assignment.latepenalty,
+            submission.score,
+            core.submission_adjusted_score(submission.submission_id) AS adjusted_score,
+            assignment.points as max_score
+FROM        core.submission
+            INNER JOIN core.assignment
+            ON (
+                submission.assignment_id = assignment.assignment_id
+                AND
+                submission.course_id = assignment.course_id
+            )
+WHERE       submitted = (
+                SELECT      MIN(submitted)
+                FROM        core.submission s1
+                WHERE       core.submission_adjusted_score(submission_id) = (
+                                SELECT      MAX(core.submission_adjusted_score(submission_id))
+                                FROM        core.submission s2
+                                WHERE       s1.course_id = s2.course_id
+                                            AND
+                                            s1.assignment_id = s2.assignment_id
+                                            AND
+                                            s1.uid = s2.uid
+                                            AND
+                                            s2.state = 'accepted'
+                            )
+                            AND
+                            submission.course_id = s1.course_id
+                            AND
+                            submission.assignment_id = s1.assignment_id
+                            AND
+                            submission.uid = s1.uid
+                            AND
+                            s1.state = 'accepted'
+            );
+GRANT SELECT ON core.best_accepted_submission TO schooner_dev;
+GRANT SELECT ON core.best_accepted_submission TO "www-data";
+
+COMMENT ON VIEW core.best_accepted_submission IS
+'This view can be used to calculate course score. Adjusted score ensures that points cannot be accrued if the deadline or soft deadline has been missed.';
+
 
 -- EOF

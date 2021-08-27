@@ -24,7 +24,7 @@ CREATE TABLE email.message
     mimetype            VARCHAR(10)     NOT NULL DEFAULT 'text/plain',
     priority            VARCHAR(6)      NOT NULL DEFAULT 'normal',
     sent_from           VARCHAR(64)     NOT NULL,
-    sent_to             VARCHAR(320)    NOT NULL,
+    sent_to             VARCHAR(10000)  NOT NULL,
     subject             VARCHAR(255)    NOT NULL,
     body                VARCHAR(65536)  NULL,
     retry_count         INTEGER         NOT NULL DEFAULT 3,
@@ -58,7 +58,7 @@ COMMENT ON COLUMN email.message.mimetype IS
 COMMENT ON COLUMN email.message.sent_from IS
 'This should always be the course''s RT queue address, e.g., "dte20068@utu.fi".';
 COMMENT ON COLUMN email.message.sent_to IS
-'Single recipient email address. Maximum local part (before @) is 64 characters and maximum domain part is 255 characters.';
+'Single recipient or comma separated list of email address. Maximum local part (before @) is 64 characters and maximum domain part is 255 characters.';
 COMMENT ON COLUMN email.message.state IS
 'All emails that have yet-to-be-sent are in state = ''queued''. Ignoring transient errors, the email cron job will set handled records either as ''failed'' (non-transient error) or ''sent'' if successfully sent.';
 
@@ -201,4 +201,31 @@ GROUP BY    name,
             size;
 GRANT ALL PRIVILEGES ON email.attachment_usage TO schooner_dev;
 GRANT SELECT ON email.attachment_usage TO "www-data";
+
+
+
+CREATE OR REPLACE FUNCTION email.sendqueue()
+    RETURNS SETOF email.message
+    LANGUAGE PLPGSQL
+AS $$
+BEGIN
+    RETURN QUERY
+        WITH decrement_retry_count AS (
+            UPDATE      email.message
+            SET         retry_count = retry_count - 1
+            WHERE       state != 'sent'
+                        AND
+                        retry_count > 0
+            RETURNING   *
+        )
+        SELECT * FROM decrement_retry_count;
+    RETURN;
+END;
+$$;
+
+COMMENT ON FUNCTION email.sendqueue IS
+'Table of all ''queued'' messages that had retries left. IMPORTANT! This function decrements all retry_count values before yielding the table. Do not call unless you mean to send the messages!';
+
+
+
 -- EOF

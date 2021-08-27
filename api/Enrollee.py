@@ -91,4 +91,22 @@ class Enrollee(dict):
             c.execute(SQL, { 'uid' : uid })
         return [dict(zip([key[0] for key in c.description], row)) for row in c]
 
+
+    def submit(self, notification: str):
+        """Updates existing 'draft' state submission, or if one doesn't exist, inserts a new one."""
+        SQL = """
+            UPDATE      core.enrollee
+            SET         notifications = %(notifications)s
+            WHERE       course_id = %(course_id)s
+                        AND
+                        uid = %(uid)s
+        """
+        with g.db.cursor() as c:
+            if not c.execute(SQL, {**self, **locals()}).rowcount:
+                raise ValueError(
+                    f"Could not update enrollee ('{self.course_id}', '{self.uid}')!"
+                )
+        g.db.commit()
+
+
 # EOF

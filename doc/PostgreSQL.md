@@ -183,6 +183,10 @@ This **works**, and should be used instead. Syntax is: `GENERATED { ALWAYS | BY 
 
 **IMPORTANT! `AS IDENTITY` DOES NOT MAKE THE COLUMN AUTOMATICALLY PRIMARY KEY!**
 
+## Avoid VARCHAR
+
+_"VARCHAR is a terrible type that exists in PostgreSQL only to comply with its associated terrible part of the SQL standard. If you don't care about multi-database compatibility, consider storing your data as TEXT and add a constraint to limits its length. Constraints you can change around without this table lock/rewrite problem, and they can do more integrity checking than just the weak length check."_
+
 ## Unsigned Integers
 
 PostgreSQL has none. Use of `DOMAIN` is suggested:
