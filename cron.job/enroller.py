@@ -8,17 +8,26 @@
 # enroller.py - Enroll students from a CSV file
 #   2021-08-25  Initial version.
 #   2021-08-25  Fixed issue #1.
+#   2021-08-28  Moved to cron.jobs (for the libraries).
+#
 #
 #   Issue #1:   Template ID is hardcoded now - needs to be a column:
-#               core.course.enrollment_message
+#     (fixed)   core.course.enrollment_message
 #   Issue #2:   In -f (overwrite/update), existing records get a new
 #               welcome message. Need to somehow get the info who was
 #               updated and who was inserted...
 #   Issue #3:   Incorrect data (course.opens) used in the welcome template.
 #               Must be assignment['T01']['deadline'].
+#               Vague and/or creates issues for other courses.
+#               This needs additional data structures for events/lectures
+#               and that is beyond the scope of this year.
+#   solution => Rewrite template WITHOUT exact date information.
+#   Issue #4:   Might (somehow) insert email.message rows with NULL values
+#               on course_id and uid (aka. enrollee). Track down the issue.
 import os
 import sys
 import platform
+
 
 #
 # REQUIRE Python 3.7 or newer
@@ -41,18 +50,18 @@ if sys.version_info < pyreq:
 # Python requirement OK, import the rest
 import csv
 import time
-import errno
-import jinja2
 import getpass
 import logging
 import psycopg
 import argparse
-import datetime
-import configparser
-import subprocess
 
+from util           import AppConfig
+from util           import Timer
+from schooner.core  import Course
+from schooner.email import Template
+from templatedata   import JTDCourseWelcome
 
-# For config
+# # For config
 class DefaultDotDict(dict):
     """Dot-notation access dict with default key '*'. Returns value for key '*' for missing missing keys, or None if '*' value has not been set."""
     def __custom_get__(self, key):
@@ -69,167 +78,31 @@ class DefaultDotDict(dict):
 #
 # CONFIGURATION  (Hardcoded / fallback defaults)
 #
-#   For instance specific configuration, please use 'enroller.conf'
+#   For instance specific configuration, please use the .conf file.
+#   IMPORTANT! This script will reject any keys from .conf file which
+#   do not appear in the config dictionary below!!
 #
 config = DefaultDotDict(
     loglevel    = "INFO",
     logfile     = f"{ os.path.splitext(os.path.basename(__file__))[0] }.log",
-    cfgfile     = f"{ os.path.splitext(os.path.basename(__file__))[0] }.conf",
+    cfgfile     = "app.conf",
     overwrite   = False,
     database    = "schooner"
 )
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
-__version__     = "0.2.0 (2021-08-25)"
+__version__     = "0.3.1 (2021-08-28)"
 __authors__     = "Jani Tammi <jasata@utu.fi>"
 VERSION         = __version__
 HEADER          = f"""
 =============================================================================
+Schooner - Simple Course Management System
 University of Turku, Faculty of Technology, Department of Computing
-Enroller - Add students to a course in Schooner DB
-Version {__version__}, (c) 2018-2021 {__authors__}
+Enroller v{__version__}, (c) 2018-2021 {__authors__}
+Utility to enroll students to a course
 """
 
-class Course(dict):
 
-    def __init__(self, cur, course_id: str):
-        SQL = """
-            SELECT      *
-            FROM        core.course
-            WHERE       course_id = %(course_id)s
-            """
-        if cur.execute(SQL, locals()).rowcount:
-            self.update(
-                dict(zip([key[0] for key in cur.description], cur.fetchone()))
-            )
-        else:
-            raise ValueError(f"Course '{course_id}' not found!")
-
-
-
-class EmailTemplate(dict):
-    """Retrieve email template and parse it (as Jinja)."""
-
-
-    def __custom_get__(self, key):
-        """For all DotDict.key access, missing or otherwise."""
-        return self.get(key, self.get('*', None))
-
-
-    __getattr__ = __custom_get__
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-
-
-    def __missing__(self, key):
-        """For DefaultDotDict[key] access, missing keys."""
-        return self.get('*', None)
-
-
-    def __init__(self, cur, template_id: str) -> None:
-        SQL = """
-            SELECT      *
-            FROM        email.template
-            WHERE       template_id = %(template_id)s
-        """
-        if cur.execute(SQL, locals()).rowcount:
-            self.update(dict(zip([key[0] for key in cur.description], cur.fetchone())))
-        else:
-            raise ValueError(f"Email template '{template_id}' not found!")
-
-
-    def parse_and_send(
-        self,
-        cur,
-        course_id: str,
-        uid: str,
-        params: dict
-    ) -> int:
-        """Apply provided arguments into the message template and queue message for sending. Returns message_id."""
-        SQL = """
-            SELECT      course.course_id,
-                        course.code AS course_code,
-                        enrollee.uid,
-                        COALESCE(course.email, 'do-not-reply@utu.fi') AS sent_from,
-                        enrollee.email AS sent_to,
-                        NULL AS subject,
-                        NULL AS body
-            FROM        core.course INNER JOIN
-                        core.enrollee ON (course.course_id = enrollee.course_id)
-            WHERE       enrollee.email IS NOT NULL
-                        AND
-                        course.course_id = %(course_id)s
-                        AND
-                        enrollee.uid = %(uid)s
-        """
-        if not cur.execute(SQL, locals()).rowcount:
-            raise ValueError(
-                f"Unable to find enrollee ('{course_id}', '{uid}')!"
-            )
-        message = dict(zip([key[0] for key in cur.description], cur.fetchone()))
-
-        # Parse subject and body, and add/change few others
-        message['subject'] = jinja2.Environment(
-            loader=jinja2.BaseLoader
-        ).from_string(self.subject).render(**params)
-        message['body'] = jinja2.Environment(
-            loader=jinja2.BaseLoader
-        ).from_string(self.body).render(**params)
-        message['mimetype'] = self.mimetype
-        message['priority'] = self.priority
-        # "Namify" sender with course code
-        if message['course_code']:
-            message['sent_from'] = f"{message['course_code']} <{message['sent_from']}>"
-
-        SQL = """
-            INSERT INTO email.message
-            (
-                course_id,
-                uid,
-                mimetype,
-                priority,
-                sent_from,
-                sent_to,
-                subject,
-                body
-            )
-            VALUES
-            (
-                %(course_id)s,
-                %(uid)s,
-                %(mimetype)s,
-                %(priority)s,
-                %(sent_from)s,
-                %(sent_to)s,
-                %(subject)s,
-                %(body)s
-            )
-            RETURNING message_id
-        """
-        if not cur.execute(SQL, message).rowcount:
-            raise ValueError(
-                f"Email message queueing failed! (template: '{self.code}', course_id: '{course_id}', recipient uid: '{uid}')"
-            )
-        self.message_id = int(cur.fetchone()[0])
-
-        #
-        # Copy attachments
-        #
-        cur.execute(
-            """
-            INSERT INTO email.attached
-            (
-                attachment_id,
-                message_id
-            )
-            SELECT      attachment_id,
-                        %(message_id)s
-            FROM        email.attached
-            WHERE       template_id = %(template_id)s
-            """,
-            self
-        )
-        return self.message_id
 
 
 def to_bool(v):
@@ -253,6 +126,7 @@ def to_bool(v):
 ##############################################################################
 if __name__ == '__main__':
 
+    timer = Timer()
     #
     # Change working directory to script's directory
     #
@@ -276,19 +150,17 @@ if __name__ == '__main__':
         metavar = "FILE"
     )
     args, _ = cfparser.parse_known_args()
+    if args.cfgfile:
+        config.cfgfile = args.cfgfile
 
 
     #
-    # Read config file
+    # Read .conf file and update config:dict
     #
     try:
-        with open(args.cfgfile or config.cfgfile, "r") as cfgfile:
-            cfgparser = configparser.ConfigParser()
-            cfgparser.read_file(cfgfile)
-            # Use only [Configuration] section
-            fcfg = dict(cfgparser.items("Configuration"))
-            # Update only existing keys
-            config.update((k, fcfg[k]) for k in set(fcfg).intersection(config))
+        fcfg = AppConfig(config.cfgfile, "enroller")
+        # IMPORTANT: This will leave out any keys not present in the config!!!
+        config.update((k, fcfg[k]) for k in set(fcfg).intersection(config))
     except FileNotFoundError as ex:
         # If the config file was specified, complain about missing it
         if args.cfgfile:
@@ -297,7 +169,7 @@ if __name__ == '__main__':
             os._exit(-1)
         # else, silently accept missing config file
     except:
-        print(f"Error reading '{args.cfgfile or config.cfgfile}'")
+        print(f"Error reading '{config.cfgfile}'")
         os._exit(-1)
 
 
@@ -393,62 +265,59 @@ if __name__ == '__main__':
     #
     # Set up logging
     #
-    logging.basicConfig(
-        level       = config.loglevel,
-        filename    = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            config.logfile
-        ),
-        format      = "%(asctime)s.%(msecs)03d %(levelname)s: %(message)s",
-        datefmt     = "%H:%M:%S"
+    log = logging.getLogger(os.path.basename(__file__))
+    log.setLevel(config.loglevel)
+    # STDOUT handler
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(
+        logging.Formatter('[%(levelname)s] %(message)s')
     )
-    log = logging.getLogger()
-    # Leave a single INFO level line for the start of the script
-    log.info(
-        f"{time.strftime('%Y-%m-%d')} {' '.join(sys.argv)}"
+    log.addHandler(handler)
+    # FILE handler
+    handler = logging.FileHandler(config.logfile)
+    handler.setFormatter(
+        logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
     )
+    # Logfile will always get DEBUG level info...
+    handler.setLevel(level=logging.DEBUG)
+    log.addHandler(handler)
 
 
     #
     # Debug, dump config
     #
+    print(HEADER)
+    log.debug(
+        f"{time.strftime('%Y-%m-%d')} {' '.join(sys.argv)}"
+    )
     log.debug(f"config: {str(config)}")
 
 
     #
-    # Check that the file exists
+    # Check that the CSV file exists
     #
     if not os.path.isfile(args.csvfile):
         e = f"CSV file '{args.csvfile}' not found!"
         log.error(e)
-        print(e)
         os._exit(-1)
 
 
-    #
-    # Test database connection and check that the course_id exists
-    #
-    cstr = f"dbname={args.database} user={getpass.getuser()}"
-    log.debug(f"Connection string: '{cstr}'")
-
-    with psycopg.connect(cstr) as conn:
+    # Local "ident" authentication (current user)
+    with psycopg.connect(f"dbname={config.database}").cursor() as cursor:
         # conn.isolation_level = psycopg.extensions.ISOLATION_LEVEL_READ_COMMITTED
         # conn.set_isolation_level(1)
-        cur = conn.cursor()
         try:
-            course = Course(cur, args.course_id)
+            course = Course(cursor, args.course_id)
             if course['enrollment_message']:
-                msg = EmailTemplate(cur, course['enrollment_message'])
+                msg = Template(cursor, course['enrollment_message'])
         except Exception as e:
             log.exception(str(e))
-            print(str(e))
             os._exit(-1)
 
 
         #
         # Import CSV (enrolled students)
         #
-        print(f"Importing students from '{args.csvfile}'... ", end='')
         log.info(f"Importing students from '{args.csvfile}'")
         with open(args.csvfile, "r", newline='') as csvfile:
             csvreader = csv.reader(
@@ -461,7 +330,7 @@ if __name__ == '__main__':
                 for idx, row in enumerate(csvreader):
                     # Whoops! ...better strip those whitespaces...
                     row = [col.strip() for col in row]
-                    cur.execute(
+                    cursor.execute(
                         """
                         CALL core.enrol
                         (
@@ -486,20 +355,19 @@ if __name__ == '__main__':
                     )
                     # If enrollment message is defined
                     if course['enrollment_message']:
+                        kwargs = JTDCourseWelcome(cursor, args.course_id)
                         msg.parse_and_send(
-                            cur,
                             args.course_id,
                             row[4],
-                            { 'course' : course }
+                            kwargs
                         )
             except Exception as ex:
-                conn.rollback()
-                print(f"ERROR: {str(ex)}")
+                cursor.connection.rollback()
+                log.exception(f"{str(ex)}")
                 os._exit(-1)
             else:
-                conn.commit()
-                log.info(f"{idx + 1} records imported OK!")
-                print(f"{idx + 1} records imported OK!")
+                cursor.connection.commit()
+                log.info(f"{idx + 1} records imported in {timer.report()}")
 
 
 

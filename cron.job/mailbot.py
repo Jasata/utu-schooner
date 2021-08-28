@@ -210,7 +210,7 @@ log.debug(Lockfile.status_report(cfg.lockfile))
 try:
     log.debug(f"Config: {cfg}")
     with    Lockfile(cfg.lockfile) as lock, \
-            psycopg.connect(f"dbname={cfg.dbname} user={cfg.dbuser}").cursor() as cursor:
+            psycopg.connect(f"dbname={cfg.database}").cursor() as cursor:
 
         log.debug(Lockfile.status_report(cfg.lockfile))
         log.debug("TALK TO ME!")

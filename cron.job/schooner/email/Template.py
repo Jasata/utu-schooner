@@ -12,6 +12,11 @@ import jinja2
 
 
 class Template(dict):
+
+    class NotSent(Exception):
+        def __init__(self, message: str):
+            super().__init__(message)
+
     def __init__(self, cursor, template_id: str = None):
         self.cursor = cursor
         SQL = """
@@ -46,9 +51,9 @@ class Template(dict):
         self,
         course_id: str,
         uid: str,
-        params: dict
+        kwargs: dict
     ) -> int:
-        """Apply provided arguments into the message template and queue message for sending. Returns message_id."""
+        """Recipient identified as an enrollee (course_id, uid) because emails are only ever sent for enrolled course. Caller must source (email.jtd_* functions) or prepare correctly populated dictionary for th Jinja parser. Function returns the message_id for the created message."""
         SQL = """
             SELECT      course.course_id,
                         course.code AS course_code,
@@ -60,9 +65,7 @@ class Template(dict):
                         enrollee.notifications
             FROM        core.course INNER JOIN
                         core.enrollee ON (course.course_id = enrollee.course_id)
-            WHERE       enrollee.email IS NOT NULL
-                        AND
-                        course.course_id = %(course_id)s
+            WHERE       course.course_id = %(course_id)s
                         AND
                         enrollee.uid = %(uid)s
         """
@@ -79,8 +82,14 @@ class Template(dict):
         #
         # Enrollee may have opted NOT to receive notifications
         #
-        if message.notifications == 'disabled':
-            return None
+        if message['notifications'] == 'disabled':
+            raise Template.NotSent(
+                f"Enrollee ('{course_id}', '{uid}') has set notifications OFF."
+            )
+        elif not message['sent_to']:
+            raise Template.NotSent(
+                f"Enrollee ('{course_id}', '{uid}') has no email address."
+            )
 
         # Parse subject and body, and add/change few others
         message['subject'] = jinja2.Environment(
@@ -88,14 +97,14 @@ class Template(dict):
         ).from_string(
             self['subject']
         ).render(
-            **params
+            **kwargs
         )
         message['body'] = jinja2.Environment(
             loader=jinja2.BaseLoader
         ).from_string(
             self['body']
         ).render(
-            **params
+            **kwargs
         )
         message['mimetype'] = self['mimetype']
         message['priority'] = self['priority']

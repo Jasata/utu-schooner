@@ -258,20 +258,22 @@ VALUES
     'DTEK0068-3002_WELCOME',
     DEFAULT,
     'high',
-    'IMPORTANT! Required tasks before {{ course.opens.strftime(''%d.%m.%Y'') }}',
-    'Welcome to {{ course.code }} {{ course.name }}
+    'IMPORTANT! Required tasks before Wednesday!',
+    'Welcome to {{ course_code }} {{ course_name }}
 
-EXTREMELY IMPORTANT: Mandatory actions with a deadline!
+VERY IMPORTANT: Number of tasks must be completed before the mandatory VM Workshop this Wednesday!
 
-Due to the corona situation, just as last year, course will be rendered mostly as self-study remote teaching. This message should give you all the necessary information to get started on this course, so please read this carefully.
+Due to the corona situation, just like last year, course will be rendered mostly as self-study remote teaching. This message should give you all the necessary information to get started on this course, so please read this carefully.
 
-This course has only one mandatory face-to-face attendance. Failure to attend will result in losing the course seat. You must attend to the VM Workshop & component kit distribution event at {{ course.opens.strftime(''%d.%m.%Y'') }}!
+This course has only one mandatory face-to-face attendance. You must attend to the VM Workshop & component kit distribution event this Wednesday! Failure to attend will result in losing the course seat.
 
-Schedule for {{ course.opens.strftime(''%A'') }} is very tight, please try not to be late.
+NOTE: There will be no lecture on this Tuesday. First event is the Wednesday VM Workshop.
+
+Schedule for VM Workshop is very tight, please try not to be late.
 
 Regards,
-{{ course.code }}
-{{ course.email }}',
+{{ course_code }}
+{{ course_email }}',
     DEFAULT,
     NULL
 );

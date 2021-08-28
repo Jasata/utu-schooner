@@ -31,7 +31,7 @@
 import os
 import sys
 import time
-import logging 
+import logging
 import logging.handlers 
  
 import psycopg
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     log.addHandler(handler)
 
 
-    with psycopg.connect(f"dbname={cfg.dbname} user={cfg.dbuser}").cursor() as cursor:
+    with psycopg.connect(f"dbname={cfg.database}").cursor() as cursor:
         for reg in PendingGitHubRegistrations(cursor):
             try: 
                 gh_session = requests.Session()

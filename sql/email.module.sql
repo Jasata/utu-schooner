@@ -7,6 +7,7 @@
 --  2021-08-23  Initial version.
 --  2021-08-24  Fix GRANT on email.template.
 --  2021-08-25  Restructured attachment storage.
+--  2021-08-28  jtd_submission_rec() and jtd_course_welcome_rec().
 --
 \echo 'Creating schema email'
 DROP SCHEMA IF EXISTS email CASCADE;
@@ -222,10 +223,216 @@ BEGIN
     RETURN;
 END;
 $$;
+-- NO GRANTS TO ANYONE! This one will decrement retry count and
+-- must be called only by the mailbot.py
 
 COMMENT ON FUNCTION email.sendqueue IS
 'Table of all ''queued'' messages that had retries left. IMPORTANT! This function decrements all retry_count values before yielding the table. Do not call unless you mean to send the messages!';
 
+
+INSERT INTO email.template
+(
+    template_id,
+    mimetype,
+    priority,
+    subject,
+    body
+)
+VALUES
+(
+    'HUBREG',
+    'text/plain',
+    'normal',
+    'Your GitHub account registration was successful!',
+    'Matching collaborator invitation was found and your GitHub account {{ enrollee.github_account }} has been successfully registered. Your execises will be automatically retrieved from repository: {{ enrollee.github_repository }}.
+
+Should you, for whatever reason, need to change your GitHub account or repository, you can always revisit https://schooner.utu.fi/register.html and issue a new registration. Just remember to make the corresponding collaborator invitation as well.
+
+Regards,
+
+{{ course.code }}
+{{ course.email }}'
+);
+
+
+
+\echo '=== email.jtd_*'
+--
+-- Jinja Template Data
+--
+--      Functions standardizing the data when parsing Jinja email.template's.
+--      Data entities are written as table/row PLPGSQL functions. All functions
+--      return a TABLE, but uniquely identifiable entities do so with a single
+--      row only.
+--
+--      jtd_<entity name>_rec()     Function returning a single row (record)
+--                                  or raises an exception if not found.
+--      jtd_<entity name>_tbl()     Funtion returns zero to N rows.
+--
+--      Column naming is specific in JTD_* functions. Each will be prefixed
+--      with the table name (plus underscore) from where the data originates
+--      from, even if a function is called.
+--
+--      Some conceptual renaming can be made. For example, the course.opens and
+--      course.closes are called course_start and course_end, respectively.
+--
+CREATE OR REPLACE FUNCTION email.jtd_submission_rec(
+    in_submission_id    INTEGER
+)
+    RETURNS TABLE
+    (
+        course_id                   VARCHAR,
+        course_code                 VARCHAR,
+        course_name                 VARCHAR,
+        course_email                VARCHAR,
+        course_github_account       VARCHAR,
+        course_start                TIMESTAMP,
+        course_end                  TIMESTAMP,
+        enrollee_uid                VARCHAR,
+        enrollee_studentid          VARCHAR,
+        enrollee_lastname           VARCHAR,
+        enrollee_firstname          VARCHAR,
+        enrollee_email              VARCHAR,
+        enrollee_notifications      VARCHAR,
+        enrollee_github_account     VARCHAR,
+        enrollee_github_repository  VARCHAR,
+        enrollee_status             VARCHAR,
+        assignment_id               VARCHAR,
+        assignment_name             VARCHAR,
+        assignment_handler          VARCHAR,
+        assignment_max_score        INTEGER,
+        assignment_score_to_pass    INTEGER,
+        assignment_retries          INTEGER,
+        assignment_deadline         DATE,
+        assignment_latepenalty      NUMERIC,
+        assignment_softdeadline     DATE,
+        submission_id               INTEGER,
+        submission_content          VARCHAR,
+        submission_submitted        TIMESTAMP,
+        submission_accepted         TIMESTAMP,
+        submission_state            VARCHAR,
+        submission_evaluator        VARCHAR,
+        submission_score            INTEGER,
+        submission_feedback         VARCHAR,
+        submission_adjusted_score   NUMERIC
+    )
+    LANGUAGE PLPGSQL
+AS $$
+BEGIN
+    RETURN QUERY
+        SELECT      course.course_id,
+                    course.code AS course_code,
+                    course.name AS course_name,
+                    course.email AS course_email,
+                    course.github_account AS course_github_account,
+                    course.opens AS course_start,
+                    course.closes AS course_end,
+                    enrollee.uid AS enrollee_uid,
+                    enrollee.studentid AS enrollee_studentid,
+                    enrollee.lastname AS enrollee_lastname,
+                    enrollee.firstname AS enrollee_firstname,
+                    enrollee.email AS enrollee_email,
+                    enrollee.notifications AS enrollee_notifications,
+                    enrollee.github_account AS enrollee_github_account,
+                    enrollee.github_repository AS enrollee_github_repository,
+                    enrollee.status::VARCHAR AS enrollee_status,
+                    assignment.assignment_id,
+                    assignment.name AS assignment_name,
+                    assignment.handler AS assignment_handler,
+                    assignment.points AS assignment_max_score,
+                    assignment.pass AS assignment_score_to_pass,
+                    assignment.retries AS assignment_retries,
+                    assignment.deadline AS assignment_deadline,
+                    assignment.latepenalty AS assignment_latepenalty,
+                    core.submission_last_retrieval_date(assignment.deadline, assignment.latepenalty) AS assignment_softdeadline,
+                    submission.submission_id,
+                    submission.content AS submission_content,
+                    submission.submitted AS submission_submitted,
+                    submission.accepted AS submission_accepted,
+                    submission.state AS submission_state,
+                    submission.evaluator AS submission_evaluator,
+                    submission.score AS submission_score,
+                    submission.feedback AS submission_feedback,
+                    core.submission_adjusted_score(submission.submission_id) AS submission_adjusted_score
+        FROM        core.enrollee
+                    INNER JOIN core.submission
+                    ON (
+                        enrollee.course_id = submission.course_id
+                        AND
+                        enrollee.uid = submission.uid
+                    )
+                    INNER JOIN core.assignment
+                    ON (
+                        submission.course_id = assignment.course_id
+                        AND
+                        submission.assignment_id = assignment.assignment_id
+                    )
+                    INNER JOIN core.course
+                    ON (assignment.course_id = course.course_id)
+        WHERE       submission.submission_id = in_submission_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'Submission #% not found!', in_submission_id
+            USING HINT = 'SUBMISSION_NOT_FOUND';
+    END IF;
+    RETURN;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION email.jtd_submission_rec TO "www-data";
+GRANT EXECUTE ON FUNCTION email.jtd_submission_rec TO schooner_dev;
+
+
+
+CREATE OR REPLACE FUNCTION email.jtd_course_welcome_rec(
+    in_course_id        VARCHAR
+)
+    RETURNS TABLE
+    (
+        course_id                   VARCHAR,
+        course_code                 VARCHAR,
+        course_name                 VARCHAR,
+        course_email                VARCHAR,
+        course_github_account       VARCHAR,
+        course_start                TIMESTAMP,
+        course_end                  TIMESTAMP,
+        course_description          VARCHAR
+    )
+    LANGUAGE PLPGSQL
+AS $$
+-- So, why not just a SELECT?
+-- This function will be expanded to contain information about the first
+-- lecture / event, once the data structures will be added for those (2022).
+-- Until then, this is more of a placeholder...
+BEGIN
+    RETURN QUERY
+        SELECT      course.course_id,
+                    course.code AS course_code,
+                    course.name AS course_name,
+                    course.email AS course_email,
+                    course.github_account AS course_github_account,
+                    course.opens AS course_start,
+                    course.closes AS course_end,
+                    course.description AS course_description
+        FROM        core.course
+                    LEFT OUTER JOIN (
+                        SELECT      *
+                        FROM        core.assignment
+                        WHERE       assignment.course_id = in_course_id
+                                    AND
+                                    assignment.assignment_id = 'T01'
+                    ) assignment
+                    ON (course.course_id = assignment.course_id)
+        WHERE       course.course_id = in_course_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'Course ''%'' not found!', in_course_id
+            USING HINT = 'COURSE_NOT_FOUND';
+    END IF;
+    RETURN;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION email.jtd_course_welcome_rec TO "www-data";
+GRANT EXECUTE ON FUNCTION email.jtd_course_welcome_rec TO schooner_dev;
 
 
 -- EOF
