@@ -7,6 +7,7 @@
 #
 # hubbot.py - GitHub exercise retriever
 #   2021-08-13  Initial version.
+#   2021-08-29  (JTa) Refactoring.
 #  
 import os
 import sys
@@ -31,7 +32,6 @@ if sys.version_info < pyreq:
     )
     os._exit(1)
 
-import time
 import logging
 import logging.handlers
 
@@ -40,25 +40,24 @@ import requests
 import git
 import psycopg
 
-import time
-import errno
 from datetime import timedelta
 from datetime import datetime
 from datetime import date
 import argparse
-import configparser
 import subprocess
 import shutil
 
 from util import AppConfig
 from util import Lockfile
+from util import LogDBHandler
+from util import Timer
 
 from schooner.core import Course
 from schooner.core import Enrollee
 from schooner.email import Template
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
-__version__     = "0.3.0 (2021-08-20)"
+__version__     = "0.4.0 (2021-08-29)"
 __authors__     = "Tuisku Polvinen <tumipo@utu.fi>, Jani Tammi <jasata@utu.fi>"
 VERSION         = __version__
 HEADER          = f"""
@@ -69,7 +68,6 @@ Hubbot version {__version__} - The GitHub repository retriever
 """
 
 SCRIPTNAME  = os.path.basename(__file__)
-LOGLEVEL    = logging.INFO  # logging.[DEBUG|INFO|WARNING|ERROR|CRITICAL]
 CONFIG_FILE = "app.conf"
 
 
@@ -178,7 +176,7 @@ class Database():
             if enrollee['notifications'] == 'enabled':
                 print(course, enrollee)
                 template = Template(cursor, 'HUBREG')
-                template.parse_and_send(
+                template.parse_and_queue(
                     submission['course_id'],
                     submission['uid'],
                     { 'course' : course, 'enrollee' : enrollee }
@@ -216,12 +214,17 @@ def log_fetch(fetchfile, message):
 
 
 
-
+###############################################################################
+#
+# MAIN
+#
+###############################################################################
 if __name__ == '__main__':
 
-    script_start_time = time.time()
+    runtime = Timer()
     cfg = AppConfig(CONFIG_FILE, 'hubbot')
-    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    # TEST - do we need to do this?
+    #os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
     #
     # Commandline arguments
@@ -244,19 +247,24 @@ if __name__ == '__main__':
     # Set up logging
     #
     log = logging.getLogger(SCRIPTNAME)
-    log.setLevel(LOGLEVEL)
+    log.setLevel(cfg.loglevel)
     if os.isatty(sys.stdin.fileno()):
         # Executed from terminal
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(
             logging.Formatter('[%(levelname)s] %(message)s')
         )
+        log.addHandler(handler)
     else:
         # Executed from crontab
         handler = logging.handlers.SysLogHandler(address = '/dev/log')
         handler.setFormatter(
             logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
         )
+        log.addHandler(handler)
+
+    # Eitherway, DB log handler is always added
+    handler = LogDBHandler(cfg.database, level = cfg.loglevel)
     log.addHandler(handler)
 
 
@@ -287,7 +295,7 @@ if __name__ == '__main__':
         if not os.path.exists(tgt):
             os.makedirs(tgt)
 
-        fetchdate = datetime.now().strftime('%Y-%m-%d')
+        fetchdate = datetime.now().strftime(cfg.dateformat)
         fetchfile = f'{tgt}/{fetchdate}.txt'
 
         #
@@ -354,42 +362,46 @@ if __name__ == '__main__':
     else:
         errors = []
         try:
-            log.info("Running dispatcher")
+            with Lockfile(cfg.lockfile):
+                log.info("Running dispatcher")
 
-            # Using local authentication -- password is never used
-            db = Database(f"dbname={cfg.dbname} user={cfg.dbuser}")
-            assignments = db.get_passed_deadlines()
-            filtered_students = []
+                # Using local authentication -- password is never used
+                db = Database(f"dbname={cfg.dbname} user={cfg.dbuser}")
+                assignments = db.get_passed_deadlines()
+                filtered_students = []
 
-            # TODO: use deadline check from database instead of < 5 stuff
-            for assignment in assignments:
-                if (date.today() - assignment['deadline']).days < 5:
-                    filtered_students = db.get_submissionless_students(assignment)
+                # TODO: use deadline check from database instead of < 5 stuff
+                for assignment in assignments:
+                    if (date.today() - assignment['deadline']).days < 5:
+                        filtered_students = db.get_submissionless_students(assignment)
 
-                for student in filtered_students:
-                    try:
-                        clone = processer(f"python hubbot.py --clone {assignment['course_id']} {assignment['assignment_id']} {student['uid']}")
-                        if not clone[1] == None:
+                    for student in filtered_students:
+                        try:
+                            clone = processer(f"python hubbot.py --clone {assignment['course_id']} {assignment['assignment_id']} {student['uid']}")
+                            if not clone[1] == None:
+                                errors.append({
+                                    'id': student['uid'],
+                                    'error': str(clone[1] )
+                                })
+                        except Exception as e:
                             errors.append({
                                 'id': student['uid'],
-                                'error': str(clone[1] )
+                                'error': str(e)
                             })
-                    except Exception as e:
-                        errors.append({
-                            'id': student['uid'],
-                            'error': str(e)
-                        })
 
-            # For manual testing
-            # for row in errors:
-            #    print(
-            #        f"==[{row['id']}]==========================\n{row['error']}"
-            #    )
-
+                # For manual testing
+                # for row in errors:
+                #    print(
+                #        f"==[{row['id']}]==========================\n{row['error']}"
+                #    )
+        except Lockfile.AlreadyRunning as e:
+            log.error("Execution cancelled! Lockfile found (another process still running).")
         except Exception as ex:
             log.exception(f"Script execution error!", exec_info = False)
             os._exit(-1)
 
-    elapsed = time.time() - script_start_time
-    log.info(f"Execution took {elapsed} seconds.")
+    # TODO, report success and error counts
+    log.info(f"N successful registrations, E errors in {runtime.report()}.")
 
+
+# EOF

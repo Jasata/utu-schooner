@@ -39,7 +39,7 @@ GRANT ALL PRIVILEGES ON core.admin TO schooner_dev;
 GRANT SELECT ON core.admin TO "www-data";
 
 COMMENT ON TABLE core.admin IS
-'Table lists all SSO IDs that are granted administrator privileges in this system. Used by the web application SSO authentication module.';
+'Table lists all SSO IDs that are granted administrator privileges in this system. Used by the web application SSO authentication module. NOTE: To-be swapped out for system.account and added with list of roles (instead of current three-tier model).';
 COMMENT ON COLUMN core.admin.uid IS
 'UTU SSO ID (aka. the login)';
 
@@ -782,6 +782,32 @@ GRANT SELECT ON core.best_accepted_submission TO "www-data";
 
 COMMENT ON VIEW core.best_accepted_submission IS
 'This view can be used to calculate course score. Adjusted score ensures that points cannot be accrued if the deadline or soft deadline has been missed.';
+
+
+\echo '=== VIEW core.last_accepted_submission'
+CREATE OR REPLACE VIEW core.ongoing_courses AS
+SELECT      course.course_id,
+            course.code,
+            course.name,
+            course.closes,
+            count(enrollee.uid) AS n_enrolled
+FROM        core.course
+            LEFT OUTER JOIN core.enrollee
+            ON (course.course_id = enrollee.course_id)
+WHERE       course.opens <= CURRENT_TIMESTAMP
+            AND
+            (
+                course.closes IS NULL
+                OR
+                course.closes >= CURRENT_TIMESTAMP
+            )
+GROUP BY    course.course_id,
+            course.code,
+            course.name,
+            course.closes;
+GRANT SELECT ON core.ongoing_courses TO schooner_dev;
+GRANT SELECT ON core.ongoing_courses TO "www-data";
+
 
 
 -- EOF

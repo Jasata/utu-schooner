@@ -205,6 +205,59 @@ SELECT (-1::uint);
 ```
 **Our solution:** We will use table constraints to enforce intended value ranges.
 
+## N-to-N table connecting three tables
+
+Oracle allows:
+```sql
+CREATE TABLE linked
+(
+    item_id       INTEGER NOT NULL,
+    warehouse_id  INTEGER NULL,
+    store_id      INTEGER NULL,
+    PRIMARY KEY (item_id, warehouse_id, store_id),
+    CONSTRAINT linked_one_location_chk
+        CHECK (
+            (warehouse_id IS NOT NULL AND store_id IS NULL)
+            OR
+            (warehouse_id IS NULL AND store_id IS NOT NULL)
+        )
+);
+```
+
+PostgreSQL does not. It will enforce `NOT NULL` on all PK columns. This may be "by-the-book" according to the standards, but from a systems architect point of view, Oracle is right not to follow this one.
+
+Using PostgreSQL, we have to resort to two partial indexes to achieve the same effect:
+```sql
+CREATE TABLE linked
+(
+    item_id       INTEGER NOT NULL,
+    warehouse_id  INTEGER NULL,
+    store_id      INTEGER NULL,
+    CONSTRAINT linked_one_location_chk
+      CHECK (
+          (warehouse_id IS NOT NULL AND store_id IS NULL)
+          OR
+          (warehouse_id IS NULL AND store_id IS NOT NULL)
+      )
+);
+CREATE UNIQUE INDEX linked_warehouse_unq
+    ON linked (item_id, warehouse_id)
+    WHERE store_id IS NULL;
+CREATE UNIQUE INDEX linked_store_unq
+    ON linked (item_id, store_id)
+    WHERE warehouse_id IS NULL;
+INSERT INTO linked
+VALUES (1, NULL, 1), (1, 1, NULL), (2, NULL, 1), (2, 1, NULL);
+INSERT INTO linked
+VALUES (1, NULL, 2), (1, 2, NULL), (2, NULL, 2), (2, 2, NULL);
+-- Duplicates fail
+INSERT INTO linked VALUES (1, 1, NULL);
+-- Three values fail
+INSERT INTO linked VALUES (1, 1, 1);
+```
+
+It should be clear that this gets untenable very fast, if the number of columns grows...
+
 
 ## PL/Python - Python Procedural Language
 

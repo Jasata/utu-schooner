@@ -281,7 +281,7 @@ def register_get():
                 **parameters
             )
         elif not parameters['course_id']:
-            gitcourses = api.Enrollee.gitcourseids(parameters['uid'])
+            gitcourses = api.Enrollee.gitcourses(parameters['uid'])
             app.logger.debug(f"Git Courses: {str(gitcourses)}")
             return flask.render_template(
                 'choose_course.jinja',

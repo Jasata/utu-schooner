@@ -8,6 +8,9 @@
 # PendingGitHubRegistrations.py - List of pending GitHub registrations
 #   2021-08-27  Initial version.
 #
+from schooner.email import Template
+from templatedata   import JTDSubmission
+
 
 class PendingGitHubRegistrations(list):
     def __init__(self, cursor):
@@ -49,6 +52,25 @@ class PendingGitHubRegistrations(list):
                 [dict(zip([key[0] for key in cursor.description], row)) for row in cursor]
             )
 
+
+
+
+    @staticmethod
+    def register(cursor, submission_id: int, repository: str) -> None:
+        cursor.execute(
+            "CALL core.register_github(%(submission_id)s, %(repository)s)",
+            locals()
+        )
+        #
+        # Send registration message
+        #
+        template    = Template(cursor, 'HUBREG')
+        data        = JTDSubmission(cursor, submission_id)
+        template.parse_and_queue(
+            data['course_id'],
+            data['enrollee_uid'],
+            **data
+        )
 
 
 # EOF

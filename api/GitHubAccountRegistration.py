@@ -49,6 +49,10 @@ class GitHubAccountRegistration(dict):
                             WHEN submission.assignment_id IS NULL THEN 'n'
                             ELSE 'y'
                         END AS github_account_submitted,
+                        CASE
+                            WHEN assignment.deadline >= CURRENT_DATE THEN 'y'
+                            ELSE 'n'
+                        END AS github_registration_open,
                         assignment.assignment_id,
                         assignment.deadline AS deadline,
                         enrollee.github_account,

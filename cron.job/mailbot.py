@@ -11,6 +11,7 @@
 #   2021-08-26  (JTa) New config object.
 #   2021-08-27  (JTa) Support for multiple recipients.
 #   2021-08-27  (JTa) Refactored and tested.
+#   2021-08-29  (JTa) Add lockfile
 #   
 #
 # Scans 'email.message' table for unsent messages and sends them.
@@ -47,9 +48,9 @@ from email.mime.application import MIMEApplication
 from util import AppConfig
 from util import Lockfile
 from util import Counter
+from util import LogDBHandler
 
 SCRIPTNAME  = os.path.basename(__file__)
-LOGLEVEL    = logging.DEBUG  # logging.[DEBUG|INFO|WARNING|ERROR|CRITICAL]
 CONFIG_FILE = "app.conf"
 
 class MailQueue(list):
@@ -186,7 +187,7 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 # Set up logging
 #
 log = logging.getLogger(SCRIPTNAME)
-log.setLevel(LOGLEVEL)
+log.setLevel(cfg.loglevel)
 if os.isatty(sys.stdin.fileno()):
     # Executed from console
     # (sys.stdin will be a TTY when executed from console)
@@ -194,26 +195,28 @@ if os.isatty(sys.stdin.fileno()):
     handler.setFormatter(
         logging.Formatter('[%(levelname)s] %(message)s')
     )
+    log.addHandler(handler)
 else:
     # Executed from crontab
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
     handler.setFormatter(
         logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
     )
+    log.addHandler(handler)
+# DB Handler
+handler = LogDBHandler(cfg.database, level = cfg.loglevel)
 log.addHandler(handler)
+
 
 
 #
 # No concurrent executions
 #
-log.debug(Lockfile.status_report(cfg.lockfile))
 try:
     log.debug(f"Config: {cfg}")
     with    Lockfile(cfg.lockfile) as lock, \
             psycopg.connect(f"dbname={cfg.database}").cursor() as cursor:
 
-        log.debug(Lockfile.status_report(cfg.lockfile))
-        log.debug("TALK TO ME!")
         #
         # Get queue of unsent mails
         #

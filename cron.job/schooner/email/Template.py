@@ -47,7 +47,7 @@ class Template(dict):
             raise ValueError(f"Template '{template_id}' not found!")
 
 
-    def parse_and_send(
+    def parse_and_queue(
         self,
         course_id: str,
         uid: str,

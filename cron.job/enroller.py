@@ -9,6 +9,7 @@
 #   2021-08-25  Initial version.
 #   2021-08-25  Fixed issue #1.
 #   2021-08-28  Moved to cron.jobs (for the libraries).
+#   2021-08-29  dateformat and timeformat added to config.
 #
 #
 #   Issue #1:   Template ID is hardcoded now - needs to be a column:
@@ -50,18 +51,18 @@ if sys.version_info < pyreq:
 # Python requirement OK, import the rest
 import csv
 import time
-import getpass
 import logging
 import psycopg
 import argparse
 
 from util           import AppConfig
 from util           import Timer
+from util           import LogDBHandler
 from schooner.core  import Course
 from schooner.email import Template
 from templatedata   import JTDCourseWelcome
 
-# # For config
+# For config
 class DefaultDotDict(dict):
     """Dot-notation access dict with default key '*'. Returns value for key '*' for missing missing keys, or None if '*' value has not been set."""
     def __custom_get__(self, key):
@@ -74,6 +75,7 @@ class DefaultDotDict(dict):
         """For DefaultDotDict[key] access, missing keys."""
         return self.get('*', None)
 
+
 ###############################################################################
 #
 # CONFIGURATION  (Hardcoded / fallback defaults)
@@ -83,12 +85,17 @@ class DefaultDotDict(dict):
 #   do not appear in the config dictionary below!!
 #
 config = DefaultDotDict(
+    dateformat  = "%Y-%m-%d",
+    timeformat  = "%H:%M:%S",
     loglevel    = "INFO",
-    logfile     = f"{ os.path.splitext(os.path.basename(__file__))[0] }.log",
+    logfile     = f"{os.path.splitext(os.path.basename(__file__))[0]}.log",
     cfgfile     = "app.conf",
     overwrite   = False,
     database    = "schooner"
 )
+# Explicitly, config in the same directory as this script
+#    cfgfile     = f"{os.path.dirname(os.path.realpath(__file__))}/app.conf",
+
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
 __version__     = "0.3.1 (2021-08-28)"
@@ -129,8 +136,9 @@ if __name__ == '__main__':
     timer = Timer()
     #
     # Change working directory to script's directory
+    # PLace for conf and log files...
     #
-    #os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 
     #
@@ -168,6 +176,7 @@ if __name__ == '__main__':
             print(ex)
             os._exit(-1)
         # else, silently accept missing config file
+        print(f"Notice: Configuration file '{config.cfgfile}' was not found.")
     except:
         print(f"Error reading '{config.cfgfile}'")
         os._exit(-1)
@@ -281,6 +290,9 @@ if __name__ == '__main__':
     # Logfile will always get DEBUG level info...
     handler.setLevel(level=logging.DEBUG)
     log.addHandler(handler)
+    # DB log Handler
+    handler = LogDBHandler(config.database, level = config.loglevel)
+    log.addHandler(handler)
 
 
     #
@@ -288,7 +300,7 @@ if __name__ == '__main__':
     #
     print(HEADER)
     log.debug(
-        f"{time.strftime('%Y-%m-%d')} {' '.join(sys.argv)}"
+        f"{time.strftime(config.dateformat)} {' '.join(sys.argv)}"
     )
     log.debug(f"config: {str(config)}")
 
@@ -318,7 +330,6 @@ if __name__ == '__main__':
         #
         # Import CSV (enrolled students)
         #
-        log.info(f"Importing students from '{args.csvfile}'")
         with open(args.csvfile, "r", newline='') as csvfile:
             csvreader = csv.reader(
                 csvfile,
@@ -356,7 +367,7 @@ if __name__ == '__main__':
                     # If enrollment message is defined
                     if course['enrollment_message']:
                         kwargs = JTDCourseWelcome(cursor, args.course_id)
-                        msg.parse_and_send(
+                        msg.parse_and_queue(
                             args.course_id,
                             row[4],
                             kwargs
@@ -367,7 +378,9 @@ if __name__ == '__main__':
                 os._exit(-1)
             else:
                 cursor.connection.commit()
-                log.info(f"{idx + 1} records imported in {timer.report()}")
+                log.info(
+                    f"{idx + 1} records imported from '{args.csvfile}' in {timer.report()}"
+                )
 
 
 

@@ -41,7 +41,7 @@
         <select id="cid" name="cid" onchange="getCourseSelection(this)">
             <option value="">Choose course</option>
         {% for course in courselist %}
-            {% set coursename = course['name'] + ' (' + course['opens'].strftime('%d.%m.%Y') %}
+            {% set coursename = course['code'] + ' ' + course['name'] + ' (' + course['opens'].strftime('%d.%m.%Y') %}
             {% if course['closes'] %}
                 {% set coursename = coursename + '-' + course['closes'].strftime('%d.%m.%Y') + ')' %}
             {% else %}

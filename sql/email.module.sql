@@ -163,7 +163,6 @@ CREATE TABLE email.attached
     message_id          INTEGER         NULL,
     template_id         VARCHAR(64)     NULL,
     created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (attachment_id, message_id, template_id),
     FOREIGN KEY (attachment_id)
         REFERENCES email.attachment (attachment_id)
         ON UPDATE RESTRICT
@@ -178,13 +177,27 @@ CREATE TABLE email.attached
         ON DELETE CASCADE,
     CONSTRAINT included_in_message_or_template_chk
         CHECK (
-            message_id IS NULL AND template_id IS NOT NULL
+            (message_id IS NULL AND template_id IS NOT NULL)
             OR
-            message_id IS NOT NULL AND template_id IS NULL
+            (message_id IS NOT NULL AND template_id IS NULL)
         )
 );
 GRANT ALL PRIVILEGES ON email.attached TO schooner_dev;
 GRANT SELECT, INSERT, DELETE ON email.attached TO "www-data";
+
+--
+-- PRIMARY KEY (attachment_id, message_id, template_id) enforced NOT NULL!
+-- Oracle might not follow the standard, but they're right not to.
+-- Now we have to resort to two partial indexes for the same effect.
+--
+CREATE UNIQUE INDEX attached_message_unq
+    ON email.attached (attachment_id, message_id)
+    WHERE template_id IS NULL;
+CREATE UNIQUE INDEX attached_template_unq
+    ON email.attached (attachment_id, template_id)
+    WHERE message_id IS NULL;
+
+
 
 
 
@@ -244,14 +257,14 @@ VALUES
     'text/plain',
     'normal',
     'Your GitHub account registration was successful!',
-    'Matching collaborator invitation was found and your GitHub account {{ enrollee.github_account }} has been successfully registered. Your execises will be automatically retrieved from repository: {{ enrollee.github_repository }}.
+    'Matching collaborator invitation was found and your GitHub account {{ enrollee_github_account }} has been successfully registered. Your execises will be automatically retrieved from repository: {{ enrollee_github_repository }}.
 
 Should you, for whatever reason, need to change your GitHub account or repository, you can always revisit https://schooner.utu.fi/register.html and issue a new registration. Just remember to make the corresponding collaborator invitation as well.
 
 Regards,
 
-{{ course.code }}
-{{ course.email }}'
+{{ course_code }}
+{{ course_email }}'
 );
 
 

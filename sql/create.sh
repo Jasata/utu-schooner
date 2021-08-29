@@ -4,11 +4,12 @@ if [ "$(whoami)" != "schooner" ]; then
         exit 255
 fi
 
+psql -d schooner -f system.module.sql
 psql -d schooner -f core.module.sql
 psql -d schooner -f email.module.sql
 psql -d schooner -f assistant.module.sql
 psql -d schooner -f DTEK0068-3002.sql
-../enroller.py DTEK0068-3002 ../DTEK0068-3002.csv
+../cron.job/enroller.py DTEK0068-3002 ../DTEK0068-3002.csv
 psql -d schooner -f core.dev_data.sql
 psql -d schooner -f email.dev_data.sql
 psql -d schooner -f assistant.dev_data.sql

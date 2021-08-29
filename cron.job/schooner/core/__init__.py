@@ -3,8 +3,7 @@ __all__ = [
     "Enrollee",
     "Assignment",
     "Submission",
-    "PendingGitHubRegistrations",
-    "github_register"
+    "PendingGitHubRegistrations"
 ]
 # Table data-dictionaries
 from .Course        import Course
@@ -14,7 +13,4 @@ from .Submission    import Submission
 
 # Result set dictionaries
 from .PendingGitHubRegistrations    import PendingGitHubRegistrations
-
-# Functions
-from .github_register               import github_register
 

@@ -39,12 +39,11 @@ import requests
 
 from util import AppConfig
 from util import Lockfile
+from util import LogDBHandler
 
 from schooner.core  import PendingGitHubRegistrations
-from schooner.core  import github_register
  
 SCRIPTNAME  = os.path.basename(__file__) 
-LOGLEVEL    = logging.INFO  # logging.[DEBUG|INFO|WARNING|ERROR|CRITICAL] 
 CONFIG_FILE = "app.conf"
 
 
@@ -135,68 +134,92 @@ if __name__ == '__main__':
     # Set up logging
     #
     log = logging.getLogger(SCRIPTNAME)
-    log.setLevel(LOGLEVEL)
+    log.setLevel(cfg.loglevel)
     if os.isatty(sys.stdin.fileno()):
         # Executed from terminal
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(
             logging.Formatter('[%(levelname)s] %(message)s')
         )
+        log.addHandler(handler)
     else:
         # Executed from crontab
         handler = logging.handlers.SysLogHandler(address = '/dev/log')
         handler.setFormatter(
             logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
         )
+        log.addHandler(handler)
+    # DB Handler
+    handler = LogDBHandler(cfg.database, level = cfg.loglevel)
     log.addHandler(handler)
 
 
-    with psycopg.connect(f"dbname={cfg.database}").cursor() as cursor:
-        for reg in PendingGitHubRegistrations(cursor):
-            try: 
-                gh_session = requests.Session()
-                gh_session.auth = (reg['course_account'], reg['course_accesstoken'])
+    # Script/execution level try-except
+    try:
+        with    Lockfile(cfg.lockfile), \
+                psycopg.connect(f"dbname={cfg.database}").cursor() as cursor:
 
-                headers = {'Authorization': 'token ' + reg['course_accesstoken']}
-                url = 'https://api.github.com/user/repository_invitations'
-                invitations = requests.get(url, headers=headers).json()
+            pendingregs = PendingGitHubRegistrations(cursor)
+            for reg in pendingregs:
+                # Registration level try-except
+                try: 
+                    gh_session = requests.Session()
+                    gh_session.auth = (reg['course_account'], reg['course_accesstoken'])
 
-                reg.update(invite_matched = False)
-                utuid = reg['uid']
-                github_account = reg['student_account']
-                course_code = reg['course_code']
-                repo_url = f"https://api.github.com/repos/{reg['student_account']}/{reg['course_code']}"
+                    headers = {'Authorization': 'token ' + reg['course_accesstoken']}
+                    url = 'https://api.github.com/user/repository_invitations'
+                    invitations = requests.get(url, headers=headers).json()
 
-                for invite in invitations:
-                    repo = invite.get('repository')
-                    if repo['owner']['login'] == github_account: # and repo['name'] == course_code:
-                        reg['student_repository'] = repo['name']
-                        reg['invite_matched'] = True
-                        requests.patch(
-                            f"{url}/{invite.get('id')}",
-                            data={}, 
-                            headers=headers
-                        )
+                    reg.update(invite_matched = False)
+                    utuid = reg['uid']
+                    github_account = reg['student_account']
+                    course_code = reg['course_code']
+                    repo_url = f"https://api.github.com/repos/{reg['student_account']}/{reg['course_code']}"
 
-                        # Check that the repository is now accessible
-                        if requests.get(repo_url, headers=headers).status_code == 200:
-                            # Register AND send notification
-                            github_register(
-                                reg['submission_id'],
-                                reg['student_repository']
+                    for invite in invitations:
+                        repo = invite.get('repository')
+                        if repo['owner']['login'] == github_account: # and repo['name'] == course_code:
+                            reg['student_repository'] = repo['name']
+                            reg['invite_matched'] = True
+                            requests.patch(
+                                f"{url}/{invite.get('id')}",
+                                data={}, 
+                                headers=headers
                             )
 
-                # TODO: handle possible cases where an invitation has already been accepted in github 
-                if not reg['invite_matched']:
-                    if requests.get(repo_url, headers=headers).status_code == 200:
-                        log.exception("Repository found but invite already accepted in GitHub")
-                    else:
-                        log.exception(f"GitHub invitation matching {reg['content']} not found")
+                            # Check that the repository is now accessible
+                            if requests.get(repo_url, headers=headers).status_code == 200:
+                                # Register AND send notification
+                                pendingregs.register(
+                                    reg['submission_id'],
+                                    reg['student_repository']
+                                )
 
-            except Exception as ex: 
-                log.exception(f"Script execution error!", exec_info = False) 
-                os._exit(-1) 
-    
+                    # TODO: handle possible cases where an invitation has
+                    #       already been accepted in github 
+                    if not reg['invite_matched']:
+                        if requests.get(repo_url, headers=headers).status_code == 200:
+                            log.warning(
+                                "Repository found but invite already accepted in GitHub"
+                            )
+                        else:
+                            log.debug(
+                                f"GitHub invitation matching {reg['student_account']} not found"
+                            )
+
+                except Exception as e:
+                    log.exception(f"Script execution error! {str(e)}")
+                    cursor.connection.rollback()
+                else:
+                    cursor.connection.commit()
+
+    except Lockfile.AlreadyRunning as e:
+        log.warning(
+            "Exiting. Another process is still executing (lockfile exists and is locked)"
+        )
+    except Exception as e:
+        log.exception(str(e))
+
     #
     # All pending registrations handled / attempted
     #
