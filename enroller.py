@@ -10,6 +10,8 @@
 #   2021-08-25  Fixed issue #1.
 #   2021-08-28  Moved to cron.jobs (for the libraries).
 #   2021-08-29  dateformat and timeformat added to config.
+#   2021-08-20  With the creation of system-shared schooner package,
+#               moved back to the project root.
 #
 #
 #   Issue #1:   Template ID is hardcoded now - needs to be a column:
@@ -50,17 +52,16 @@ if sys.version_info < pyreq:
 
 # Python requirement OK, import the rest
 import csv
-import time
 import logging
 import psycopg
 import argparse
 
-from util           import AppConfig
-from util           import Timer
-from util           import LogDBHandler
-from schooner.core  import Course
-from schooner.email import Template
-from templatedata   import JTDCourseWelcome
+from schooner.util      import AppConfig
+from schooner.util      import Timer
+from schooner.util      import LogDBHandler
+from schooner.db.core   import Course
+from schooner.db.email  import Template
+from schooner.jtd       import JTDCourseWelcome
 
 # For config
 class DefaultDotDict(dict):
@@ -283,13 +284,17 @@ if __name__ == '__main__':
     )
     log.addHandler(handler)
     # FILE handler
-    handler = logging.FileHandler(config.logfile)
-    handler.setFormatter(
-        logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-    )
-    # Logfile will always get DEBUG level info...
-    handler.setLevel(level=logging.DEBUG)
-    log.addHandler(handler)
+    try:
+        handler = logging.FileHandler(config.logfile)
+        handler.setFormatter(
+            logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+        )
+        # Logfile will always get DEBUG level info...
+        handler.setLevel(level=logging.DEBUG)
+        log.addHandler(handler)
+    except PermissionError:
+        print(f"Unable to write to '{config.logfile}'!")
+        os._exit(-1)
     # DB log Handler
     handler = LogDBHandler(config.database, level = config.loglevel)
     log.addHandler(handler)
@@ -299,9 +304,7 @@ if __name__ == '__main__':
     # Debug, dump config
     #
     print(HEADER)
-    log.debug(
-        f"{time.strftime(config.dateformat)} {' '.join(sys.argv)}"
-    )
+    log.debug(f"commandline: {' '.join(sys.argv)}")
     log.debug(f"config: {str(config)}")
 
 
@@ -321,7 +324,9 @@ if __name__ == '__main__':
         try:
             course = Course(cursor, args.course_id)
             if course['enrollment_message']:
-                msg = Template(cursor, course['enrollment_message'])
+                jt_msg  = Template(cursor, course['enrollment_message'])
+                jt_data = JTDCourseWelcome(cursor, args.course_id)
+
         except Exception as e:
             log.exception(str(e))
             os._exit(-1)
@@ -358,7 +363,7 @@ if __name__ == '__main__':
                             'course_id':        args.course_id,
                             'uid':              row[4],
                             'studentid':        row[0],
-                            'email':            row[3],
+                            'email':            row[3] or None,
                             'lastname':         row[1],
                             'firstname':        row[2],
                             'update_existing':  args.overwrite
@@ -366,12 +371,14 @@ if __name__ == '__main__':
                     )
                     # If enrollment message is defined
                     if course['enrollment_message']:
-                        kwargs = JTDCourseWelcome(cursor, args.course_id)
-                        msg.parse_and_queue(
-                            args.course_id,
-                            row[4],
-                            kwargs
-                        )
+                        try:
+                            jt_msg.parse_and_queue(
+                                args.course_id,
+                                row[4],
+                                jt_data
+                            )
+                        except Template.NotSent as e:
+                            log.warning(str(e))
             except Exception as ex:
                 cursor.connection.rollback()
                 log.exception(f"{str(ex)}")

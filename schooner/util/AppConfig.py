@@ -45,7 +45,9 @@ class AppConfig(DotDict):
     """Reads a .conf file (with ConfigParser()) into a dictionary."""
     def __init__(self, cfgfile: str, section: str = None) -> None:
         if not os.path.exists(cfgfile):
-            raise FileNotFoundError(f"Configuration file '{cfgfile}' not found!")
+            raise FileNotFoundError(
+                f"Configuration file '{cfgfile}' not found! (cwd: '{os.getcwd()}'"
+            )
         cfg = configparser.ConfigParser()
         cfg.optionxform = lambda option: option # preserve case
         cfg.read(cfgfile)

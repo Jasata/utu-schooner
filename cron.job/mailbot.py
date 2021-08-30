@@ -11,7 +11,9 @@
 #   2021-08-26  (JTa) New config object.
 #   2021-08-27  (JTa) Support for multiple recipients.
 #   2021-08-27  (JTa) Refactored and tested.
-#   2021-08-29  (JTa) Add lockfile
+#   2021-08-29  (JTa) Add lockfile.
+#   2021-08-30  (JTa) Now changes CWD /before/ attempting to read 'app.conf'.
+#                     Imports from shared schooner package.
 #   
 #
 # Scans 'email.message' table for unsent messages and sends them.
@@ -32,7 +34,6 @@
 #
 import os
 import sys
-import time
 
 import psycopg
 import logging
@@ -40,18 +41,47 @@ import logging.handlers
 
 import smtplib
 import email
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from email.mime.multipart   import MIMEMultipart
+from email.mime.text        import MIMEText
 from email.mime.application import MIMEApplication
 
-# Local package
-from util import AppConfig
-from util import Lockfile
-from util import Counter
-from util import LogDBHandler
+# Local packages, add path for crontab execution
+#   But not as the zero index... as a habit.
+#   This could be important since 3rd party code may rely on sys.path
+#   documentation conformance:
+#
+#           As initialized upon program startup, the first item of this list,
+#           path[0], is the directory containing the script that was used to
+#           invoke the Python interpreter.
+#
+sys.path.insert(
+    1,
+    os.path.normpath(
+        os.path.join(
+            os.path.dirname(
+                os.path.realpath(
+                    os.path.join(
+                        os.getcwd(),
+                        os.path.expanduser(__file__)
+                    )
+                )
+            ),
+            ".." # Parent directory (relative to this script)
+        )
+    )
+)
 
-SCRIPTNAME  = os.path.basename(__file__)
+from schooner.util import AppConfig
+from schooner.util import Lockfile
+from schooner.util import Counter
+from schooner.util import Timer
+from schooner.util import LogDBHandler
+
+
 CONFIG_FILE = "app.conf"
+
+
+
 
 class MailQueue(list):
 
@@ -60,15 +90,12 @@ class MailQueue(list):
         # This query must be committed, so that in case that this entire script
         # fails, the retry_count changes are not lost.
         SQL = """
-            SELECT      message.*,
-                        course.code
+            SELECT      message.*
             FROM        email.sendqueue() message
-                        INNER JOIN core.course
-                        ON (message.course_id = course.course_id)
             """
         if cursor.execute(SQL).rowcount:
             super().__init__(
-                [dict(zip([key[0] for key in cursor.description], row)) for row in cursor]
+                [dict(zip([k[0] for k in cursor.description], r)) for r in cursor]
             )
         # Because email.sendqueue() decremented .retry_count values
         cursor.connection.commit()
@@ -88,7 +115,14 @@ class Message(MIMEMultipart):
             """
             if cursor.execute(SQL, locals()).rowcount:
                 super().__init__(
-                    [dict(zip([key[0] for key in cursor.description], row)) for row in cursor]
+                    [
+                        dict(
+                            zip(
+                                [key[0] for key in cursor.description],
+                                row
+                            )
+                        ) for row in cursor
+                    ]
                 )
 
 
@@ -169,8 +203,14 @@ class Message(MIMEMultipart):
 if __name__ != "__main__":
     raise ValueError("This script must not be imported by other scripts!")
 
-# sst - Script Start Time
-sst = time.time()
+# Basic execution timer
+timer = Timer()
+
+
+#
+# Cron job speciality - change to script's directory
+#
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 
 #
@@ -178,15 +218,11 @@ sst = time.time()
 #
 cfg = AppConfig(CONFIG_FILE, "mailbot")
 
-#
-# Cron job speciality - change to script's directory
-#
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
-    
+
 #
 # Set up logging
 #
-log = logging.getLogger(SCRIPTNAME)
+log = logging.getLogger(os.path.basename(__file__))
 log.setLevel(cfg.loglevel)
 if os.isatty(sys.stdin.fileno()):
     # Executed from console
@@ -214,6 +250,7 @@ log.addHandler(handler)
 #
 try:
     log.debug(f"Config: {cfg}")
+    log.debug(f"CWD: '{os.getcwd()}'")
     with    Lockfile(cfg.lockfile) as lock, \
             psycopg.connect(f"dbname={cfg.database}").cursor() as cursor:
 
@@ -222,8 +259,13 @@ try:
         #
         cntr = Counter()
 
-        for item in MailQueue(cursor):
+        queue = MailQueue(cursor)
+        log.debug(f"{len(queue)} items in MailQueue")
+        for item in queue:
 
+            log.debug(
+                f"#{item['message_id']}: '{item['sent_from']}' -> '{item['sent_to']}'"
+            )
             # message-level try-except, must not terminate the loop
             try:
                 #
@@ -233,7 +275,7 @@ try:
 
                 message.send()
                 log.debug(
-                    f"Message #{item['message_id']}: '{message['From']}' -> '{message['To']}' sent"
+                    f"Sent #{item['message_id']}: '{message['From']}' -> '{message['To']}'"
                 )
 
             # message-level try-except
@@ -251,7 +293,10 @@ try:
                 pass
 
         # for loop ends
-        log.info(f"{cntr.total} messages handled in {(time.time() - sst):.3f} seconds. {cntr.errors} errors and {cntr.successes} successes.")
+        if cntr.total or log.isEnabledFor(logging.DEBUG):
+            log.info(
+                f"{cntr.total} messages handled in {timer.report()}. {cntr.errors} errors and {cntr.successes} successes."
+            )
 
 except Lockfile.AlreadyRunning as e:
     log.exception(

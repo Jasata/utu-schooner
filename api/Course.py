@@ -30,13 +30,14 @@ class Course(dict):
         return self.get('*', None)
 
 
-    def __init__(self, course_id: str):
+    def __init__(self, course_id: str, **kwargs):
         """Course implementation."""
         SQL = """
             SELECT      *
             FROM        core.course
             WHERE       course_id = %(course_id)s
         """
+        # TODO: Add where clauses
         with g.db.cursor() as c:
             if c.execute(SQL, locals()).rowcount:
                 self.update(dict(zip([key[0] for key in c.description], c.fetchone())))

@@ -1,11 +1,9 @@
 #!/bin/env python3
 
 import os
-import pwd
-import grp
-import subprocess
-import datetime
 import psycopg
+import subprocess
+
 
 
 ROOTPATH = os.path.split(os.path.realpath(__file__))[0]
@@ -227,55 +225,89 @@ class SQLiteScript(File):
 
 
 
-class Identity():
-    def __init__(self, user: str, group: str = None):
-        """Group will be user's primary group, unless specified. Use requires superuser privileges."""
-        self.uid = pwd.getpwnam(user).pw_uid
-        if not group:
-            self.gid = pwd.getpwnam(user).pw_gid
-        else:
-            self.gid = grp.getgrnam(group).gr_gid
-    def __enter__(self):
-        self.original_uid = os.getuid()
-        self.original_gid = os.getgid()
-        os.setegid(self.uid)
-        os.seteuid(self.gid)
-    def __exit__(self, type, value, traceback):
-        os.seteuid(self.original_uid)
-        os.setegid(self.original_gid)
 
-# Example use:
-#   with Identity("pi"):
-#       do_or_die(
-#           'ssh-keygen -b 4096 -t rsa -f /home/pi/.ssh/id_rsa -q -N ""'
-#       )
+class CourseList(list):
+
+    def __init__(self, cursor, **kwargs):
+        self.SQL = """
+            SELECT      *
+            FROM        core.course
+        """
+        where = []
+        for k, v in kwargs.items():
+            if k == 'handler':
+                if isinstance(v, str):
+                    kwargs[k] = [v]
+                where.append(
+                    """course_id IN (
+                        SELECT      distinct course_id
+                        FROM        core.assignment
+                        WHERE       handler = ANY(%(handler)s)
+                    )
+                    """
+                )
+            # elif isinstance(v, str):
+            #     where.append(f" {k} = %({k})s ")
+            # elif isinstance(v, list):
+            else:
+                if not isinstance(v, list):
+                    kwargs[k] = [v]
+                where.append(f" {k} = ANY(%({k})s) ")
+            #else:
+            #    raise ValueError(f"Cannot handle datatype of argument '{k}'")
+        if where:
+            self.SQL += f" WHERE {' AND '.join(where)}"
+        self.args = kwargs
+        if cursor.execute(self.SQL, kwargs).rowcount:
+            super().__init__(
+                [dict(zip([k[0] for k in cursor.description], row)) for row in cursor]
+            )
 
 
-class Counter(dict):
-    ERR = False
-    OK  = True
-    def __init__(self):
-        self.__n = 0
-        self.__e = 0
-    def add(self, x: bool = True):
-        self.__n += 1
-        self.__e += int(not x)
-    @property
-    def total(self):
-        return self.__n
-    @property
-    def errors(self):
-        return self.__e
-    @property
-    def successes(self):
-        return self.__n - self.__e
-    def __repr__(self):
-        return f"{self.__e} errors out of {self.__n} total"
+    def sort(self, key):
+        super().sort(key=lambda k : k[key])
+
+
+
+#from schooner.db.core   import CourseList
+from schooner.db.core   import EnrolleeList
+from schooner.db.core   import AssignmentList
+from schooner.db.system import LogList
+
+import datetime
 
 if __name__ == '__main__':
 
+    with psycopg.connect(f"dbname=schooner").cursor() as cursor:
 
-    cnt = Counter()
-    cnt.add(Counter.ERR)
-    cnt.add()
-    print(cnt)
+        course_list = CourseList(
+            cursor,
+#            handlers = ['HUBBOT', 'HUBREG', 'BOGUS'],
+#            opens = '2021-08-25 00:00:00'
+            opens = datetime.datetime(2021, 8, 25, 0, 0, 0, 0)
+#            github_account = 'DTEK0068'
+        )
+        
+        print("Found", len(course_list), "matching courses:")
+        course_list.sort('course_id')
+        for c in course_list:
+            print(c['course_id'], c['opens'])
+
+
+        my_courses = EnrolleeList(
+            cursor, course_id = 'DTEK0000-3002'
+        )
+        my_courses.sort('uid')
+        print("Total of", len(my_courses), "enrollments:")
+        for row in my_courses:
+            print(row['course_id'], row['uid'])
+
+
+        al = AssignmentList(cursor, course_id = 'DTEK0068-3002')
+        al.sort("deadline")
+        for a in al:
+            print(a['assignment_id'], a['name'], a['deadline'])
+
+
+
+# EOF

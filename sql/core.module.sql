@@ -236,9 +236,10 @@ COMMENT ON COLUMN core.handler.description IS
 
 INSERT INTO core.handler
 VALUES
-('HUBREG', 'GitHub account registrations', NULL),
-('HUBBOT', 'GitHub exercise retriever', NULL),
-('APLUS', 'APlus Quizz score retriever', 'Scores are retrieved from APlus automatically.');
+('HUBREG',   'GitHub account registrations', NULL),
+('HUBBOT',   'GitHub exercise retriever', NULL),
+('APLUS',    'APlus Quizz score retriever', 'Scores are retrieved from APlus automatically.')
+('BORROWUI', 'Study material loan', 'UI based study material borrow (''draft'') and return (''accepted'').');
 
 
 --

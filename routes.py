@@ -41,6 +41,8 @@ from application    import app, sso
 # ApiException classes, data classes
 import api
 
+from schooner.db.core import CourseList
+
 # Pylint doesn't understand app.logger ...so we disable all these warnings
 # pylint: disable=maybe-no-member
 
@@ -264,6 +266,54 @@ def api_doc():
 #
 # Dynamic pages
 #
+@app.route('/material_loan.html', methods=['GET'])
+def teacher_material_loan():
+    if not sso.is_admin:
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Permission Denied",
+            message = "Admin privileges are required to access this page."
+        )
+    
+    parameters = {
+        'course_id' : request.args.get('cid'),
+        'title'     : 'Teaching Material Loan',
+        'uid'       : sso.uid
+    }
+    try:
+        if not parameters['uid']:
+            return flask.render_template(
+                'please_login.jinja',
+                **parameters
+            )
+        elif not parameters['course_id']:
+            courses = CourseList(g.db.cursor(), handler = 'BORROWUI')
+            app.logger.debug(f"Courses with loan material: {str(courses)}")
+            return flask.render_template(
+                'choose_course.jinja',
+                courselist = courses,
+                **parameters
+            )
+        else:
+            # Render edit/enter view
+            return flask.render_template(
+                'register.jinja',
+                registration = api.GitHubAccountRegistration(
+                    parameters['course_id'],
+                    parameters['uid']
+                ),
+                **parameters
+            )
+
+    except Exception as e:
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
+        )
+
+
+
 @app.route('/register.html', methods=['GET'])
 def register_get():
     """Render page to enter GitHub account."""

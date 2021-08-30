@@ -1,17 +1,49 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
+import os
+import sys
 import time
+import logging
 import psycopg
 
-from util import AppConfig
-from util import Lockfile
-from util import Timer
-from util import LogDBHandler
 
-from schooner.core  import Course
-from templatedata   import JTDSubmission
+# Add parent directory to the search path
+# But not as the zero index... because it could be important for 3rd party
+# code that may rely on sys.path documentation conformance:
+#
+#       As initialized upon program startup, the first item of this list,
+#       path[0], is the directory containing the script that was used to
+#       invoke the Python interpreter.
+#
+sys.path.insert(
+    1,
+    os.path.normpath(
+        os.path.join(
+            os.path.dirname(
+                os.path.realpath(
+                    os.path.join(
+                        os.getcwd(),
+                        os.path.expanduser(__file__)
+                    )
+                )
+            ),
+            ".." # Parent directory (relative to this script)
+        )
+    )
+)
 
+from schooner.util      import AppConfig
+from schooner.util      import Lockfile
+from schooner.util      import Timer
+from schooner.util      import LogDBHandler
+
+from schooner.db.core   import Course
+from schooner.jtd       import JTDSubmission
+
+
+
+# Dummy Jinja "parser" (dumps keyword arguments)
 def jinja(**kwargs):
     for k, v in kwargs.items():
         print(k, v)
@@ -21,22 +53,22 @@ def jinja(**kwargs):
 def dummy_parse(kwargs: dict):
     return jinja(**kwargs)
 
+
+# Funly ASCII ticker to entertain the masses
 def ticker():
     try:
         ticker.count += 1
     except AttributeError:
         ticker.count = 0
-    try:
-        print(
-            "\r{}".format(
-                ['\\', '|', '/', '-'][ticker.count]
-            ),
-            end   = '',
-            flush = True
-        )
-    except IndexError:
-        ticker.count = 0
-        print("\r\\", end = '', flush = True)
+    # Did ya know? Cannot have "\" in f-string ... !!
+    print(
+        "\r{}".format(
+            ['\\', '|', '/', '-'][ticker.count % 4]
+        ),
+        end   = '',
+        flush = True
+    )
+
 
 
 if __name__ == '__main__':
@@ -48,10 +80,6 @@ if __name__ == '__main__':
     #
     # Setup logging
     #
-    import os
-    import sys
-    import logging
-    # Give descriptive name, such as "HUBBOT", "HUBREG", or "MAILBOT" (max 32 chars)
     log = logging.getLogger(os.path.basename(__file__))
     log.setLevel(cfg.loglevel)
     # STDOUT handler
@@ -62,7 +90,6 @@ if __name__ == '__main__':
     log.addHandler(handler)
     # DB Handler
     handler = LogDBHandler(cfg.database, level = cfg.loglevel)
-    #handler.setLevel(level=cfg.loglevel)
     log.addHandler(handler)
 
     log.debug("Debug spam")

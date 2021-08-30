@@ -8,8 +8,8 @@
 # PendingGitHubRegistrations.py - List of pending GitHub registrations
 #   2021-08-27  Initial version.
 #
-from schooner.email import Template
-from templatedata   import JTDSubmission
+from schooner.db.email import Template
+from schooner.jtd      import JTDSubmission
 
 
 class PendingGitHubRegistrations(list):

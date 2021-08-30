@@ -8,6 +8,7 @@
 # hubbot.py - GitHub exercise retriever
 #   2021-08-13  Initial version.
 #   2021-08-29  (JTa) Refactoring.
+#   2021-08-30  (JTa) Now uses schooner package.
 #  
 import os
 import sys
@@ -47,14 +48,39 @@ import argparse
 import subprocess
 import shutil
 
-from util import AppConfig
-from util import Lockfile
-from util import LogDBHandler
-from util import Timer
 
-from schooner.core import Course
-from schooner.core import Enrollee
-from schooner.email import Template
+# Add parent directory to the search path
+# But not as the zero index... because it could be important for 3rd party
+# code that may rely on sys.path documentation conformance:
+#
+#       As initialized upon program startup, the first item of this list,
+#       path[0], is the directory containing the script that was used to
+#       invoke the Python interpreter.
+#
+sys.path.insert(
+    1,
+    os.path.normpath(
+        os.path.join(
+            os.path.dirname(
+                os.path.realpath(
+                    os.path.join(
+                        os.getcwd(),
+                        os.path.expanduser(__file__)
+                    )
+                )
+            ),
+            ".." # "Parent", relative to this script
+        )
+    )
+)
+
+from schooner.util          import AppConfig
+from schooner.util          import Lockfile
+from schooner.util          import LogDBHandler
+from schooner.util          import Timer
+from schooner.db.core       import Course
+from schooner.db.core       import Enrollee
+from schooner.db.email      import Template
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
 __version__     = "0.4.0 (2021-08-29)"

@@ -7,6 +7,7 @@
 #
 # hubreg.py - GitHub registration and collaborator invitation handler
 #   2021-08-23  Initial version.
+#   2021-08-30  (JTa) Now uses schooner package.
 #
 # 
 # PROCESS 
@@ -37,11 +38,35 @@ import logging.handlers
 import psycopg
 import requests 
 
-from util import AppConfig
-from util import Lockfile
-from util import LogDBHandler
+# Add parent directory to the search path
+# But not as the zero index... because it could be important for 3rd party
+# code that may rely on sys.path documentation conformance:
+#
+#       As initialized upon program startup, the first item of this list,
+#       path[0], is the directory containing the script that was used to
+#       invoke the Python interpreter.
+#
+sys.path.insert(
+    1,
+    os.path.normpath(
+        os.path.join(
+            os.path.dirname(
+                os.path.realpath(
+                    os.path.join(
+                        os.getcwd(),
+                        os.path.expanduser(__file__)
+                    )
+                )
+            ),
+            ".." # "Parent", relative to this script
+        )
+    )
+)
 
-from schooner.core  import PendingGitHubRegistrations
+from schooner.util      import AppConfig
+from schooner.util      import Lockfile
+from schooner.util      import LogDBHandler
+from schooner.db.core   import PendingGitHubRegistrations
  
 SCRIPTNAME  = os.path.basename(__file__) 
 CONFIG_FILE = "app.conf"
