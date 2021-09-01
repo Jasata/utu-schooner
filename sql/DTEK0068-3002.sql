@@ -7,6 +7,7 @@
 --  2021-08-13  Initial version.
 --  2021-08-22  Updated for assignment.retries.
 --  2021-08-25  Updated DTE2 -> DTEK & new columns.
+--  2021-09-01  Updated for ASSETMGR.
 --
 
 \echo '=== INSERT''ing DTEK0068-3002...'
@@ -57,19 +58,21 @@ VALUES
     1,
     NULL,
     '2021-10-30',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'T02',
     'DTEK0068-3002',
-    'VM Workshop',
+    'Component Kit Loan',
     'Component Kit lending. A ''draft'' submission registers the kit ID for loan and once returned, the submission is set to ''accepted''',
-    'BORROWUI',
+    'ASSETMGR',
     1,
     1,
-    0,
-    '2021-10-27',
-    NULL
+    NULL,
+    '2021-12-17',
+    NULL,
+    'last'
 ),
 (
     'E01',
@@ -81,7 +84,8 @@ VALUES
     NULL,
     0,
     '2021-11-07',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E02',
@@ -93,7 +97,8 @@ VALUES
     NULL,
     0,
     '2021-11-14',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E03',
@@ -105,7 +110,8 @@ VALUES
     NULL,
     0,
     '2021-11-21',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E04',
@@ -117,7 +123,8 @@ VALUES
     NULL,
     0,
     '2021-11-28',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E05',
@@ -129,7 +136,8 @@ VALUES
     NULL,
     0,
     '2021-12-05',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E06',
@@ -141,7 +149,8 @@ VALUES
     NULL,
     0,
     '2021-12-12',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q01',
@@ -153,7 +162,8 @@ VALUES
     NULL,
     0,
     '2021-10-31',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q02',
@@ -165,7 +175,8 @@ VALUES
     NULL,
     0,
     '2021-11-07',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q03',
@@ -177,7 +188,8 @@ VALUES
     NULL,
     0,
     '2021-11-14',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q04',
@@ -189,7 +201,8 @@ VALUES
     NULL,
     0,
     '2021-11-21',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q05',
@@ -201,7 +214,8 @@ VALUES
     NULL,
     0,
     '2021-11-28',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q06',
@@ -213,7 +227,8 @@ VALUES
     NULL,
     0,
     '2021-12-05',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q07',
@@ -225,7 +240,8 @@ VALUES
     NULL,
     0,
     '2021-12-12',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'EXM',
@@ -237,7 +253,8 @@ VALUES
     147,
     2,
     '2021-12-12',
-    NULL
+    NULL,
+    'best'
 );
 
 INSERT INTO email.template

@@ -7,6 +7,7 @@
 #
 # CourseList.py - List of data dictionaries for core.course
 #   2021-08-30  Initial version.
+#   2021-08-31  Supports keyword 'uid' and returns enrolled course.
 #
 
 class CourseList(list):
@@ -18,9 +19,9 @@ class CourseList(list):
         """
         where = []
         for k, v in kwargs.items():
+            if not isinstance(v, list):
+                kwargs[k] = [v]
             if k == 'handler':
-                if isinstance(v, str):
-                    kwargs[k] = [v]
                 where.append(
                     """course_id IN (
                         SELECT      distinct course_id
@@ -29,9 +30,16 @@ class CourseList(list):
                     )
                     """
                 )
+            elif k == 'uid':
+                where.append(
+                    """course_id IN (
+                        SELECT      course_id
+                        FROM        core.enrollee
+                        WHERE       uid = ANY(%(uid)s)
+                    )
+                    """
+                )
             else:
-                if not isinstance(v, list):
-                    kwargs[k] = [v]
                 where.append(f" {k} = ANY(%({k})s) ")
         if where:
             self.SQL += f" WHERE {' AND '.join(where)}"

@@ -12,6 +12,17 @@
 #   2021-08-29  dateformat and timeformat added to config.
 #   2021-08-20  With the creation of system-shared schooner package,
 #               moved back to the project root.
+#   2021-08-31  Supports CSV column mapping to process different exports.
+#
+#   IMPORTANT
+# -----------------------------------------------------------------------------
+#   Peppi (as of August 2021) does not export CSV files. Neither does the
+#   system expose any API to automatically extract registration information.
+#   Only way currently to enroll accepted Peppi course registrations is:
+#   1)  Export .xlsx sheet for registrations
+#   2)  Open in Excel and REMOVE THE HEADER ROW
+#   3)  Ensure that all are ACCEPTED (others must not be enrolled
+#   4)  Save as .csv (UTF-8) and use this script
 #
 #
 #   Issue #1:   Template ID is hardcoded now - needs to be a column:
@@ -90,16 +101,17 @@ config = DefaultDotDict(
     timeformat  = "%H:%M:%S",
     loglevel    = "INFO",
     logfile     = f"{os.path.splitext(os.path.basename(__file__))[0]}.log",
-    cfgfile     = "app.conf",
+    cfgfile     = "enroller.conf",
     overwrite   = False,
-    database    = "schooner"
+    database    = "schooner",
+    csvmapping  = "peppi"
 )
 # Explicitly, config in the same directory as this script
 #    cfgfile     = f"{os.path.dirname(os.path.realpath(__file__))}/app.conf",
 
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
-__version__     = "0.3.1 (2021-08-28)"
+__version__     = "0.4.0 (2021-08-31)"
 __authors__     = "Jani Tammi <jasata@utu.fi>"
 VERSION         = __version__
 HEADER          = f"""
@@ -123,6 +135,52 @@ def to_bool(v):
         return False
     else:
         raise TypeError('Boolean value expected.')
+
+
+class EnrollArguments(dict):
+    """Load row (a list) into an argument dictinonary for SQL execute."""
+
+    maps = {
+        'peppi' : {
+            'uid' : 5, 'studentid' : 4, 'email' : 3, 'lastname' : 0, 'firstname' : 1
+        },
+        'nettiopsu' : {
+            'uid' : 4, 'studentid' : 0, 'email' : 3, 'lastname' : 1, 'firstname' : 2
+        }
+    }
+
+    def __init__(
+        self,
+        course_id: str,
+        **kwargs
+    ):
+        self.mapping = kwargs.pop('map', 'peppi')
+        if self.mapping not in EnrollArguments.maps:
+            raise ValueError(f"Mapping '{self.mapping}' is not recognized!")
+        # These keys are not sourced from rows
+        self.exclude = {'course_id', 'update'}
+        # Key names as required by the core.enroll() procedure call
+        self.update(
+            {
+                'course_id' : course_id,
+                'uid'       : kwargs.get('uid', None),
+                'studentid' : kwargs.get('studentid', None),
+                'email'     : kwargs.get('email', None),
+                'lastname'  : kwargs.get('lastname', None),
+                'firstname' : kwargs.get('firstname', None),
+                'update'    : kwargs.get('update', False)
+            }
+        )
+
+    def load(self, row: list):
+        if len(row) <= max(self.maps[self.mapping].values()):
+            raise ValueError(
+                f"row has too few columns for the chosen mapping ('{self.mapping}')! {max(self.maps[self.mapping].values()) + 1} columns are required. Row: {str(row)}"
+            )
+        for k in [k for k in self.keys() if k not in self.exclude]:
+            # or None replaces empty strings with NULL
+            self[k] = row[self.maps[self.mapping][k]] or None
+        return self
 
 
 
@@ -193,8 +251,13 @@ if __name__ == '__main__':
     #           to change them.
     #
     argparser = argparse.ArgumentParser(
+        prog            = "Enroller",
         description     = HEADER,
-        formatter_class = argparse.RawTextHelpFormatter,
+        formatter_class = lambda prog: argparse.RawTextHelpFormatter(
+            prog,
+            max_help_position = 34,
+            width=80
+        )
     )
     # EXCEPTIONS!!
     # Do not define a default for 'csv' or 'schemasql'
@@ -210,6 +273,15 @@ if __name__ == '__main__':
         action  = "store_true",
         dest    = "overwrite",
         default = config.overwrite
+    )
+    argparser.add_argument(
+        "-m",
+        "--map",
+        help    = f"Set logging level. Default: '{config.csvmapping}'. Available: {list(EnrollArguments.maps.keys())}",
+        choices = EnrollArguments.maps.keys(),
+        dest    = "csvmapping",
+        type    = str,
+        metavar = "MAP"
     )
     argparser.add_argument(
         #"-c",
@@ -343,6 +415,11 @@ if __name__ == '__main__':
                 quotechar   = '"'
             )
             try:
+                sqlargs = EnrollArguments(
+                    args.course_id,
+                    update = args.overwrite,
+                    map = config.csvmapping
+                )
                 for idx, row in enumerate(csvreader):
                     # Whoops! ...better strip those whitespaces...
                     row = [col.strip() for col in row]
@@ -356,18 +433,10 @@ if __name__ == '__main__':
                             %(email)s,
                             %(lastname)s,
                             %(firstname)s,
-                            %(update_existing)s
+                            %(update)s
                         )
                         """,
-                        {
-                            'course_id':        args.course_id,
-                            'uid':              row[4],
-                            'studentid':        row[0],
-                            'email':            row[3] or None,
-                            'lastname':         row[1],
-                            'firstname':        row[2],
-                            'update_existing':  args.overwrite
-                        }
+                        sqlargs.load(row)
                     )
                     # If enrollment message is defined
                     if course['enrollment_message']:
@@ -379,9 +448,14 @@ if __name__ == '__main__':
                             )
                         except Template.NotSent as e:
                             log.warning(str(e))
-            except Exception as ex:
+            except psycopg.errors.StringDataRightTruncation as e:
                 cursor.connection.rollback()
-                log.exception(f"{str(ex)}")
+                log.error(f"sqlargs: {str(sqlargs)}")
+                log.exception(f"{str(e)}")
+                os._exit(-1)
+            except Exception as e:
+                cursor.connection.rollback()
+                log.exception(f"{str(e)}")
                 os._exit(-1)
             else:
                 cursor.connection.commit()

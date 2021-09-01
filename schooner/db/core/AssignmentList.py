@@ -8,7 +8,9 @@
 # AssignmentList.py - List of data dictionaries for core.assignment
 #   2021-08-30  Initial version.
 #
-
+from datetime import timedelta
+from datetime import datetime
+from datetime import date
 
 class AssignmentList(list):
 
@@ -19,10 +21,27 @@ class AssignmentList(list):
         """
         where = []
         for k, v in kwargs.items():
-            if isinstance(v, list):
-                where.append(f" {k} = ANY(%({k})s) ")
+            if not isinstance(v, list):
+                kwargs[k] = [v]
+            if k == 'active_course':
+                kwargs.pop(k)
+                where.append(
+                    """
+                    course_id IN (
+                        SELECT      course_id
+                        FROM        core.course
+                        WHERE       opens > CURRENT_TIMESTAMP
+                                    AND
+                                    (
+                                        closes IS NULL
+                                        OR
+                                        closes < CURRENT_TIMESTAMP
+                                    )
+                    )
+                    """
+                )
             else:
-                where.append(f" {k} = %({k})s ")
+                where.append(f" {k} = ANY(%({k})s) ")
         if where:
             self.SQL += f" WHERE {' AND '.join(where)}"
         self.args = kwargs
@@ -34,6 +53,17 @@ class AssignmentList(list):
 
     def sort(self, key):
         super().sort(key=lambda k : k[key])
+
+    def filter_deadlines(self):
+        filtered_list = []
+        for assignment in list(filter(lambda assignment: assignment['deadline'] < date.today(), self)):
+            if date.today() - assignment['deadline'] == timedelta(1):
+                filtered_list.append(assignment)
+            elif assignment['latepenalty'] == None:
+                continue
+            elif (date.today() - assignment['deadline']).days * assignment['latepenalty'] < 100:
+                filtered_list.append(assignment)
+        return filtered_list
 
 
 

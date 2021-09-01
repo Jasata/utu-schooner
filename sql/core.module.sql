@@ -171,7 +171,7 @@ CREATE TABLE core.enrollee
 (
     course_id           VARCHAR(16)     NOT NULL,
     uid                 VARCHAR(10)     NOT NULL,
-    studentid           VARCHAR(10)     NOT NULL,
+    studentid           VARCHAR(32)     NOT NULL,
     lastname            VARCHAR(32)     NOT NULL,
     firstname           VARCHAR(32)     NOT NULL,
     email               VARCHAR(64)     NULL,
@@ -236,10 +236,10 @@ COMMENT ON COLUMN core.handler.description IS
 
 INSERT INTO core.handler
 VALUES
-('HUBREG',   'GitHub account registrations', NULL),
-('HUBBOT',   'GitHub exercise retriever', NULL),
+('HUBREG',   'GitHub account registrations', 'Match registered Git accounts with pending collaborator invitations to complete the registration.'),
+('HUBBOT',   'GitHub exercise retriever', 'Retrieve assignment submissions from Git repository on deadlines.'),
 ('APLUS',    'APlus Quizz score retriever', 'Scores are retrieved from APlus automatically.')
-('BORROWUI', 'Study material loan', 'UI based study material borrow (''draft'') and return (''accepted'').');
+('ASSETMGR', 'Asset Manager', 'Loaning assets / study materials (''draft'') and return tracking (''accepted'').');
 
 
 --
@@ -258,6 +258,7 @@ CREATE TABLE core.assignment
     retries             INTEGER         NULL DEFAULT 0,
     deadline            DATE            NOT NULL,
     latepenalty         DECIMAL(3,3)    NULL,
+    evaluation          VARCHAR(8)      NOT NULL DEFAULT 'best',
     PRIMARY KEY (assignment_id, course_id),
     FOREIGN KEY (course_id)
         REFERENCES core.course (course_id)
@@ -272,7 +273,9 @@ CREATE TABLE core.assignment
     CONSTRAINT assignment_retries_chk
         CHECK (retries IS NULL OR retries >= 0),
     CONSTRAINT assignment_latepenalty_chk
-        CHECK (latepenalty IS NULL OR latepenalty > 0)
+        CHECK (latepenalty IS NULL OR latepenalty > 0),
+    CONSTRAINT assignment_evaluation_chk
+        CHECK (evaluation IN ('first', 'last', 'best', 'worst'))
 );
 GRANT ALL PRIVILEGES ON core.assignment TO schooner_dev;
 GRANT SELECT ON core.assignment TO "www-data";
@@ -418,6 +421,9 @@ BEGIN
     -- Draft becomes Accepted
     IF NEW.state = 'accepted' THEN
         NEW.accepted := CURRENT_TIMESTAMP;
+        IF NEW.evaluator IS NULL THEN
+            NEW.evaluator = CURRENT_USER;
+        END IF;
     END IF;
     RETURN NEW;
 END;
@@ -637,7 +643,7 @@ CREATE OR REPLACE PROCEDURE
 core.enrol(
     in_course_id            VARCHAR(16),
     in_uid                  VARCHAR(10),
-    in_student_id           VARCHAR(10),
+    in_student_id           VARCHAR(32),
     in_email                VARCHAR(64),
     in_lastname             VARCHAR(32),
     in_firstname            VARCHAR(32),
@@ -700,34 +706,34 @@ COMMENT ON PROCEDURE core.enrol IS
 -- Last accepted submission
 \echo '=== VIEW core.last_accepted_submission'
 CREATE VIEW core.last_accepted_submission AS
-SELECT		submission.submission_id,
-			submission.course_id,
-			submission.assignment_id,
-			submission.uid,
-			submission.submitted,
-			submission.submitted::DATE - assignment.deadline AS days_late,
-			assignment.latepenalty,
-			submission.score,
-			core.submission_adjusted_score(submission.submission_id) AS adjusted_score,
-			assignment.points as max_score
-FROM		core.submission
-			INNER JOIN core.assignment
+SELECT      submission.submission_id,
+            submission.course_id,
+            submission.assignment_id,
+            submission.uid,
+            submission.submitted,
+            submission.submitted::DATE - assignment.deadline AS days_late,
+            assignment.latepenalty,
+            submission.score,
+            core.submission_adjusted_score(submission.submission_id) AS adjusted_score,
+            assignment.points as max_score
+FROM        core.submission
+            INNER JOIN core.assignment
             ON (
             	submission.assignment_id = assignment.assignment_id
                 AND
                 submission.course_id = assignment.course_id
             )
-WHERE		submitted = (
-				SELECT		MAX(submitted)
-				FROM		core.submission s
-				WHERE		s.course_id = submission.course_id
-							AND
-							s.assignment_id = submission.assignment_id
-							AND
-							s.uid = submission.uid
-							AND
-							s.state = 'accepted'
-			);
+WHERE       submitted = (
+                SELECT      MAX(submitted)
+                FROM        core.submission s
+                WHERE       s.course_id = submission.course_id
+                            AND
+                            s.assignment_id = submission.assignment_id
+                            AND
+                            s.uid = submission.uid
+                            AND
+                            s.state = 'accepted'
+            );
 GRANT SELECT ON core.last_accepted_submission TO schooner_dev;
 GRANT SELECT ON core.last_accepted_submission TO "www-data";
 
@@ -809,6 +815,140 @@ GROUP BY    course.course_id,
 GRANT SELECT ON core.ongoing_courses TO schooner_dev;
 GRANT SELECT ON core.ongoing_courses TO "www-data";
 
+
+
+\echo '=== core.asset_claim()'
+CREATE OR REPLACE FUNCTION
+core.asset_claim(
+    in_course_id        VARCHAR,
+    in_assignment_id    VARCHAR,
+    in_uid              VARCHAR,
+    in_content          VARCHAR,
+    in_confidential     VARCHAR DEFAULT NULL
+)
+    RETURNS INTEGER
+    LANGUAGE PLPGSQL
+    SECURITY INVOKER
+    VOLATILE
+    CALLED ON NULL INPUT
+AS $$
+-- Creates a 'draft' submission for a handler = 'ASSETMGR' assignment which
+-- records (submission.content) the asset ID (if any).
+-- Use asset_return() function to record (state = 'accepted') the return of
+-- the loaned item(s).
+-- Returns the submission_id of the created record.
+DECLARE
+    v_submission_id INTEGER;
+    v_count         INTEGER;
+BEGIN
+    SELECT      submission.submission_id
+    FROM        core.assignment
+                LEFT OUTER JOIN (
+                    SELECT      *
+                    FROM        core.submission
+                    WHERE       submission.state = 'draft'
+                                AND
+                                uid = in_uid
+                ) submission
+                ON (
+                    assignment.course_id = submission.course_id
+                    AND
+                    assignment.assignment_id = submission.assignment_id
+                )
+    WHERE       assignment.course_id = in_course_id
+                AND
+                assignment.assignment_id = in_assignment_id
+                AND
+                assignment.handler = 'ASSETMGR'
+    INTO        v_submission_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'Asset assignment (''%'', ''%'') not found or has incorrect handler!',
+            in_course_id, in_assignment_id
+            USING HINT = 'ASSIGNMENT_NOT_FOUND';
+    ELSEIF v_submission_id IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Student (''%'') already has assets on loan (#%)!',
+            in_uid, v_submission_id
+            USING HINT = 'ASSETS_ALREADY_CLAIMED';
+    END IF;
+    -- create new record
+    INSERT INTO core.submission
+    (
+        course_id,
+        assignment_id,
+        uid,
+        content,
+        confidential
+    )
+    VALUES
+    (
+        in_course_id,
+        in_assignment_id,
+        in_uid,
+        in_content,
+        in_confidential
+    )
+    RETURNING submission_id
+    INTO v_submission_id;
+    RETURN v_submission_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION core.asset_claim TO "www-data";
+GRANT EXECUTE ON FUNCTION core.asset_claim TO schooner_dev;
+
+
+\echo '=== core.asset_return()'
+CREATE OR REPLACE PROCEDURE
+core.asset_return(
+    in_submission_id    INTEGER,
+    in_feedback         VARCHAR DEFAULT NULL,
+    in_confidential     VARCHAR DEFAULT NULL
+)
+    LANGUAGE PLPGSQL
+    SECURITY INVOKER
+AS $$
+-- Sets 'draft' submission for a handler = 'ASSETMGR' assignment to
+-- 'accepted' and credits it with assignment.score, unless deadline has
+-- been passed.
+DECLARE
+    r_record    RECORD;
+    v_points    INTEGER;
+BEGIN
+    SELECT      assignment.points,
+                assignment.deadline
+    FROM        core.submission
+                INNER JOIN core.assignment
+                ON (
+                    submission.course_id = assignment.course_id
+                    AND
+                    submission.assignment_id = assignment.assignment_id
+                )
+    WHERE       submission.submission_id = in_submission_id
+                AND
+                assignment.handler = 'ASSETMGR'
+    INTO        r_record;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'Submission #% not found or has incorrect handler!',
+            in_submission_id
+            USING HINT = 'SUBMISSION_NOT_FOUND';
+    ELSEIF r_record.deadline < CURRENT_TIMESTAMP THEN
+        v_points = 0;
+    ELSE
+        v_points = r_record.points;
+    END IF;
+    UPDATE      core.submission
+    SET         state = 'accepted',
+                score = v_points,
+                evaluator = CURRENT_USER,
+                feedback = in_feedback,
+                confidential = in_confidential
+    WHERE       submission_id = in_submission_id;
+END;
+$$;
+GRANT EXECUTE ON PROCEDURE core.asset_return TO "www-data";
+GRANT EXECUTE ON PROCEDURE core.asset_return TO schooner_dev;
 
 
 -- EOF

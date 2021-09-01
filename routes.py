@@ -41,7 +41,10 @@ from application    import app, sso
 # ApiException classes, data classes
 import api
 
-from schooner.db.core import CourseList
+from schooner.db.core       import Course
+from schooner.db.core       import CourseList
+from schooner.db.core       import Assignment
+from schooner.ui.teacher    import Assets
 
 # Pylint doesn't understand app.logger ...so we disable all these warnings
 # pylint: disable=maybe-no-member
@@ -267,7 +270,7 @@ def api_doc():
 # Dynamic pages
 #
 @app.route('/material_loan.html', methods=['GET'])
-def teacher_material_loan():
+def material_loan_get():
     if not sso.is_admin:
         return flask.render_template(
             "internal_error.jinja",
@@ -275,40 +278,176 @@ def teacher_material_loan():
             message = "Admin privileges are required to access this page."
         )
     
-    parameters = {
-        'course_id' : request.args.get('cid'),
-        'title'     : 'Teaching Material Loan',
-        'uid'       : sso.uid
+    args = {
+        'course_id'     : request.args.get('cid'),
+        'assignment_id' : request.args.get('aid'),
+        'title'         : 'Teaching Material Loan',
+        'uid'           : sso.uid
     }
     try:
-        if not parameters['uid']:
+        if not args['uid']:
             return flask.render_template(
                 'please_login.jinja',
-                **parameters
+                **args
             )
-        elif not parameters['course_id']:
-            courses = CourseList(g.db.cursor(), handler = 'BORROWUI')
-            app.logger.debug(f"Courses with loan material: {str(courses)}")
+        elif not args['course_id'] or not args['assignment_id']:
+            # Choose assignment to work with
+            assignments = Assets.assignments(
+                g.db.cursor(),
+                active_courses = True
+            )
+            app.logger.debug(
+                f"Number of asset assignments: {len(assignments)}"
+            )
             return flask.render_template(
-                'choose_course.jinja',
-                courselist = courses,
-                **parameters
+                'choose_assignment.jinja',
+                assignments = assignments,
+                **args
             )
         else:
             # Render edit/enter view
             return flask.render_template(
-                'register.jinja',
-                registration = api.GitHubAccountRegistration(
-                    parameters['course_id'],
-                    parameters['uid']
+                'material_loan.jinja',
+                course = Course(
+                    g.db.cursor(),
+                    course_id = args['course_id']
                 ),
-                **parameters
+                assignment = Assignment(
+                    g.db.cursor(),
+                    course_id = args['course_id'],
+                    assignment_id = args['assignment_id']
+                ),
+                loans = Assets(
+                    g.db.cursor(),
+                    args['course_id'],
+                    args['assignment_id']
+                ).sort('lastname'),
+                **args
             )
+
 
     except Exception as e:
         return flask.render_template(
             "internal_error.jinja",
             title = "Internal Error",
+            message = str(e)
+        )
+
+
+
+@app.route('/material_return.html', methods=['POST'])
+def material_return_post():
+    # Expects:
+    #       form['cid']             submission.course_id
+    #       form['aid']             submission.assignment_id
+    #       form['uid']             submission.uid
+    requiredkeys = ["cid", "aid", "uid"]
+    try:
+        # Require authenticated session
+        if not sso.is_admin:
+            raise ValueError(
+                f"Session must be authenticated to an admin account!"
+            )
+        # process FORM data
+        issues = []
+        data = request.form.to_dict(flat = True)
+        for key in requiredkeys:
+            if key not in data:
+                issues.append(
+                    f"Form does not contain key '{key}'"
+                )
+        if issues:
+            raise ValueError(
+                f"Malformed POST data: {', '.join(issues)}: {str(data)}"
+            )
+    except Exception as e:
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
+        )
+    # Application logic
+    try:
+        #
+        # Save submitted loan
+        #
+        app.logger.debug(str(data))
+        with g.db.cursor() as cursor:
+            # Returns created submission_id, but we ignore it
+            Assets.receive_cua(
+                cursor, data['cid'], data['aid'], data['uid']
+            )
+        return flask.redirect(
+            f"/material_loan.html?cid={data['cid']}&aid={data['aid']}"
+        )
+    except Exception as e:
+        app.logger.exception(f"Unable to handle material return registration! {str(e)}")
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Material Return Registration Error",
+            message = str(e)
+        )
+
+
+
+@app.route('/material_loan.html', methods=['POST'])
+def material_loan_post():
+    # Expects:
+    #       form['cid']             submission.course_id
+    #       form['aid']             submission.assignment_id
+    #       form['uid']             submission.uid
+    #       form['item_id']         submission.content
+    requiredkeys = ["cid", "aid", "uid", "item_id"]
+    try:
+        # Require authenticated session
+        if not sso.is_admin:
+            raise ValueError(
+                f"Session must be authenticated to an admin account!"
+            )
+        # process FORM data
+        issues = []
+        data = request.form.to_dict(flat = True)
+        for key in requiredkeys:
+            if key not in data:
+                issues.append(
+                    f"Form does not contain key '{key}'"
+                )
+        if issues:
+            raise ValueError(
+                f"Malformed POST data: {', '.join(issues)}: {str(data)}"
+            )
+        data['item_id'] = data['item_id'].strip()
+        if len(data['item_id']) < 1:
+            raise ValueError(
+                f"Submitted item id cannot be empty!"
+            )
+    except Exception as e:
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
+        )
+    # Application logic
+    try:
+        #
+        # Save submitted loan
+        #
+        app.logger.debug(str(data))
+        with g.db.cursor() as cursor:
+            # Returns created submission_id, but we ignore it
+            id = Assets.loan(
+                cursor, data['cid'], data['aid'], data['uid'], data['item_id']
+            )
+            app.logger.error(f"Created submission #{id}")
+        return flask.redirect(
+            f"/material_loan.html?cid={data['cid']}&aid={data['aid']}"
+        )
+    except Exception as e:
+        # TODO: Log exception somewhere we can SEE it! Like... log -table?
+        app.logger.exception(f"Unable to handle material loan registration! {str(e)}")
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Material Loan Registration Error",
             message = str(e)
         )
 
@@ -331,8 +470,7 @@ def register_get():
                 **parameters
             )
         elif not parameters['course_id']:
-            gitcourses = api.Enrollee.gitcourses(parameters['uid'])
-            app.logger.debug(f"Git Courses: {str(gitcourses)}")
+            gitcourses = CourseList(handler = 'HUBREG', uid = sso.uid)
             return flask.render_template(
                 'choose_course.jinja',
                 courselist = gitcourses,

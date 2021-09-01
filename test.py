@@ -269,10 +269,12 @@ class CourseList(list):
 
 
 
+
 #from schooner.db.core   import CourseList
 from schooner.db.core   import EnrolleeList
 from schooner.db.core   import AssignmentList
 from schooner.db.system import LogList
+from schooner.db.core   import CourseList
 
 import datetime
 
@@ -308,6 +310,8 @@ if __name__ == '__main__':
         for a in al:
             print(a['assignment_id'], a['name'], a['deadline'])
 
-
+        cl = CourseList(cursor, uid = 'jasata')
+        for c in cl:
+            print(c['code'], c['name'])
 
 # EOF

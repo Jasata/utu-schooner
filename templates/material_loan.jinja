@@ -1,0 +1,111 @@
+{% extends 'layout.jinja' %}
+{#
+    Log/"sign" study materials for a loan.
+
+    REQUIRES
+        title:      str
+        course:     Course dictionary object
+        assignment: Assignment dictionary object
+        loans:      schooner.ui.teacher.MaterialLoan -list of dictionaries
+#}
+
+{% block content %}
+    <div>
+        <style>
+            .asset_in_loan
+            {
+                background:     #ca97e6;
+            }
+            #uid
+            {
+                width:          600px;
+                max-width:      600px;
+            }
+            #loanlayout
+            {
+                border:         none;
+            }
+        </style>
+        <script>
+            function formKeyDown(form, key) {
+                if (key != 'Enter') {
+                    return key
+                }
+                console.log('Enter key -> loanAsset()')
+                return loanAsset(form)
+            }
+            function returnAsset(form) {
+                if (form.uid.selectedIndex < 0) {
+                    console.log('Student has not been selected')
+                    return false
+                }
+                form.action = '/material_return.html'
+                form.submit()
+                return false
+            }
+            function loanAsset(form) {
+                if (form.uid.selectedIndex < 0) {
+                    console.log('Student has not been selected')
+                    return false
+                }
+                if (form.item_id.value.trim() === '') {
+                    console.log('empty asset id')
+                    return false
+                }
+                form.action = '/material_loan.html'
+                form.submit()
+                return false
+            }
+        </script>
+        <h2>{{ course.code }} {{ course.name }}</h2>
+    {% if loans|length == 0 %}
+        <p>
+            This course does not seen to have any enrollees?
+        </p>
+    {% else %}
+        <p>
+            Course has {{ loans|length }} enrollees.<br>
+        </p>
+        <p>
+            <b>{{ assignment.name }}</b><br>
+            {% if assignment.description %}
+            {{ assignment.description }}<br>
+            {% endif %}
+            <form action="#" method="post" onkeydown="return formKeyDown(this, event.key)">
+            <input type="hidden" name="cid" value="{{ assignment.course_id }}">
+            <input type="hidden" name="aid" value="{{ assignment.assignment_id }}">
+            <table id="loanlayout">
+                <tr>
+                    <td><b>Asset ID:</b></td>
+                    <td></td>
+                    <td style="text-align: right;"><b>Return asset<b></td>
+                </tr>
+                <tr>
+                    <td><input type="text" name="item_id" maxlength="15" size="15"><input type="button" onclick="return loanAsset(this.form)" value="Loan"></td>
+                    <td></td>
+                    <td style="text-align: right;"><input type="button" onclick="return returnAsset(this.form)" value="Return"></td>
+                </tr>
+                <tr>
+                    <td colspan="3"><b>Student</b> (highlighted has signed assets):</td>
+                <tr>
+                    <td colspan="3"><select id="uid" name="uid" size="20">
+        {% for person in loans %}
+{#            {% if person['already_signed'] != 'y' %}  #}
+                {% set optiontext = person['lastname'] + ' ' + person['firstname'] + ' #' + person['studentid'] %}
+                {% if person['already_signed'] == 'y' %}
+                    {% set optiontext = optiontext + ' (' + person['loan_item_id'] + ')' %}
+                    {% set optionclass = 'class="asset_in_loan"' %}
+                {% else %}
+                    {% set optionclass = "" %}
+                {% endif %}
+                <option {{ optionclass }} value="{{ person['uid'] }}">{{ optiontext }}</option>
+{#            {% endif %}  #}
+        {% endfor %}
+            </select></td>
+                </tr>
+            </table>
+            </form>
+        </p>
+    {% endif %}
+    </div>
+{% endblock %}

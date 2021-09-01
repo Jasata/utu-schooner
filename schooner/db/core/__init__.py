@@ -8,7 +8,8 @@ __all__ = [
     "CourseList",
     "EnrolleeList",
     "SubmissionList",
-    "AssignmentList"
+    "AssignmentList",
+    "MaterialLoanList"
 ]
 # Table-row data-dictionaries
 from .Course            import Course
@@ -22,6 +23,7 @@ from .EnrolleeList      import EnrolleeList
 from .HandlerList       import HandlerList
 from .SubmissionList    import SubmissionList
 from .AssignmentList    import AssignmentList
+from .MaterialLoanList  import MaterialLoanList
 
 # Result set dictionaries
 from .PendingGitHubRegistrations    import PendingGitHubRegistrations

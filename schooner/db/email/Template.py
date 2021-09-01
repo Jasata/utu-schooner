@@ -49,9 +49,9 @@ class Template(dict):
 
     def parse_and_queue(
         self,
-        course_id: str,
+        cid: str,
         uid: str,
-        kwargs: dict
+        **kwargs: dict
     ) -> int:
         """Recipient identified as an enrollee (course_id, uid) because emails are only ever sent for enrolled course. Caller must source (email.jtd_* functions) or prepare correctly populated dictionary for th Jinja parser. Function returns the message_id for the created message."""
         SQL = """
@@ -65,13 +65,13 @@ class Template(dict):
                         enrollee.notifications
             FROM        core.course INNER JOIN
                         core.enrollee ON (course.course_id = enrollee.course_id)
-            WHERE       course.course_id = %(course_id)s
+            WHERE       course.course_id = %(cid)s
                         AND
                         enrollee.uid = %(uid)s
         """
         if not self.cursor.execute(SQL, locals()).rowcount:
             raise ValueError(
-                f"Unable to find enrollee ('{course_id}', '{uid}')!"
+                f"Unable to find enrollee ('{cid}', '{uid}')!"
             )
         message = dict(
             zip(
@@ -84,11 +84,11 @@ class Template(dict):
         #
         if message['notifications'] == 'disabled':
             raise Template.NotSent(
-                f"Enrollee ('{course_id}', '{uid}') has set notifications OFF."
+                f"Enrollee ('{cid}', '{uid}') has set notifications OFF."
             )
         elif not message['sent_to']:
             raise Template.NotSent(
-                f"Enrollee ('{course_id}', '{uid}') has no email address."
+                f"Enrollee ('{cid}', '{uid}') has no email address."
             )
 
         # Parse subject and body, and add/change few others

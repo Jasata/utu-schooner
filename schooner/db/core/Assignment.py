@@ -9,6 +9,12 @@
 #   2021-08-27  Initial version.
 #
 
+from schooner.db.email  import Template
+from schooner.jtd       import JTDSubmission
+from datetime           import timedelta
+from datetime           import datetime
+from datetime           import date
+
 class Assignment(dict):
     def __init__(self, cursor, course_id: str = None, assignment_id: str = None):
         SQL = """
@@ -39,6 +45,52 @@ class Assignment(dict):
             )
         else:
             raise ValueError(f"Assignment ('{course_id}', '{assignment_id}') not found!")
+
+    
+    @staticmethod
+    def register_as_submission(cursor, student:dict, assignment:dict) -> None:
+        sql = """
+        INSERT INTO core.submission (
+            assignment_id, 
+            course_id, 
+            uid,
+            content,
+            submitted, 
+            state
+        )
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING submission_id
+        """
+        submission_date = datetime.combine(date.today() - timedelta(1), datetime.max.time())
+        cursor.execute(
+            sql,
+            (
+                assignment['assignment_id'],
+                assignment['course_id'],
+                student['uid'],
+                'submission content',
+                submission_date,
+                'draft'
+            )
+        )
+        submission_id   = cursor.fetchone()[0]
+        template        = Template(cursor, 'HUBBOT_SUCCESS')
+        data            = JTDSubmission(cursor, submission_id)
+        template.parse_and_queue(
+            data['course_id'],
+            data['enrollee_uid'],
+            **data
+        )
+
+        
+    @staticmethod
+    def send_retrieval_failure_mail(cursor, assignment:dict) -> None:
+        template    = Template(cursor, 'HUBBOT_FAIL')
+        template.parse_and_queue(
+            assignment['course_id'],
+            assignment['enrollee_uid'],
+            **assignment
+        )
 
 
 # EOF

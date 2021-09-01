@@ -1,0 +1,51 @@
+{% extends 'layout.jinja' %}
+{#
+    choose_assignment.jinja
+
+    Let the user choose one of the listed assignments and reload the page
+    with URI arguments ('..?cid={course_id}&aid={assignment_id}').
+
+    REQUIRES
+        assignments: list of assignment dictionaries
+        
+#}
+{% block content %}
+    {% if not assignments %}
+        There are no assignments to choose from.
+    {% elif assignments|length == 1 %}
+        Reloading page with assignment ('{{ assignments[0]['course_id'] }}', '{{ assignments[0]['assignment_id'] }}') please wait...
+        <script>
+        var url = window.location.href;
+        if (url.indexOf('?') > -1) {
+            url += '&cid={{assignments[0]['course_id']}}&aid={{assignments[0]['assignment_id']}}'
+        } else {
+            url += '?cid={{assignments[0]['course_id']}}&aid={{assignments[0]['assignment_id']}}'
+        }
+        window.location.href = url;
+        </script>
+    {% else %}
+        <script>
+            function getCourseSelection(selectObject) {
+                var value = selectObject.value;
+                if (value) {
+                    ids = value.split(",");
+                    var url = window.location.href;
+                    if (url.indexOf('?') > -1) {
+                        url += '&cid=' + ids[0] + '&aid=' + ids[1]
+                    } else {
+                        url += '?cid=' + ids[0] + '&aid=' + ids[1]
+                    }
+                    window.location.href = url;
+                }
+            }
+        </script>
+        <select id="cid" name="cid" onchange="getCourseSelection(this)">
+            <option value="">Choose an assignment</option>
+        {% for assignment in assignments %}
+            {% set optiontext = assignment['course_code'] + ' ' + assignment['course_name'] + ' (' + assignment['assignment_id'] + ') ' + assignment['name'] %}
+            {% set optionvalue = assignment['course_id'] + ',' + assignment['assignment_id'] %}
+            <option value="{{ optionvalue }}">{{ optiontext }}</option>
+        {% endfor %}
+        </select>
+    {% endif %}
+{% endblock %}

@@ -267,6 +267,49 @@ Regards,
 {{ course_email }}'
 );
 
+INSERT INTO email.template
+(
+    template_id,
+    mimetype,
+    priority,
+    subject,
+    body
+)
+VALUES
+(
+    'HUBBOT_SUCCESS',
+    'text/plain',
+    'normal',
+    'Your submission has been retrieved',
+    'Your submission for assignment {{ assignment_id }} on course {{ course_id }} has been successfully retrieved from your GitHub repository.
+
+Regards,
+
+{{ course_code }}
+{{ course_email }}'
+);
+
+INSERT INTO email.template
+(
+    template_id,
+    mimetype,
+    priority,
+    subject,
+    body
+)
+VALUES
+(
+    'HUBBOT_FAIL',
+    'text/plain',
+    'normal',
+    'Your submission was not found',
+    'Your submission for assignment {{ assignment_id }} on course {{ course_id }} has not been found from your GitHub repository.
+
+Regards,
+
+{{ course_code }}
+{{ course_email }}'
+);
 
 
 \echo '=== email.jtd_*'

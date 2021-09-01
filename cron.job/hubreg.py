@@ -36,7 +36,8 @@ import logging
 import logging.handlers 
  
 import psycopg
-import requests 
+import requests
+from requests.api import patch 
 
 # Add parent directory to the search path
 # But not as the zero index... because it could be important for 3rd party
@@ -206,6 +207,8 @@ if __name__ == '__main__':
                         if repo['owner']['login'] == github_account: # and repo['name'] == course_code:
                             reg['student_repository'] = repo['name']
                             reg['invite_matched'] = True
+
+                            # Accept invite
                             requests.patch(
                                 f"{url}/{invite.get('id')}",
                                 data={}, 
@@ -216,6 +219,7 @@ if __name__ == '__main__':
                             if requests.get(repo_url, headers=headers).status_code == 200:
                                 # Register AND send notification
                                 pendingregs.register(
+                                    cursor,
                                     reg['submission_id'],
                                     reg['student_repository']
                                 )

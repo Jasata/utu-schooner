@@ -1,0 +1,10 @@
+Sukunimi;Etunimi;Nimi;Sähköposti;Opiskeluoikeusnumero;Käyttäjätunnus;Ryhmä group;Ilmoittautumisen tila;Ilmoittautumisen tilan koodi
+A1;B1;A1 B1;a1b1@utu.fi;1234567;abcdef;;Ilmoittautuminen hyväksytty;ACCEPTED
+A2;B2;A2 B2;a2b2@utu.fi;1234568;dfasgfd;TEK_LUK_TKT_SL21_N;Ilmoittautuminen hyväksytty;ACCEPTED
+A3;B3;A3 B3;a3b3@utu.fi;1234569;abcdef;TEK_LUK_TKT_SL21_AV;Ilmoittautuminen hyväksytty;ACCEPTED
+A4;B4;A4 B4;;123456_987654_A;asdfasf;TEK_LUK_TKT_SL21_AV;Ilmoittautuminen hyväksytty;ACCEPTED
+A5;B5;A5 B5;a5b5@utu.fi;123457_987654_A;qweqeq;TEK_LUK_TKT_SL21_AV;Ilmoittautuminen hyväksytty;ACCEPTED
+A6;B6;A6 B6;a6b6@utu.fi;123458_987654_A;asfasfaf;TEK_LUK_TKT_SL21_AV;Ilmoittautuminen hyväksytty;ACCEPTED
+A7;B7;A7 B7;a7b7@utu.fi;123459_987654_A;sdgcvhnx;;Ilmoittautuminen hyväksytty;ACCEPTED
+A8;B8;A8 B8;a8b8@utu.fi;123460_987654_A;dgdfg;;Ilmoittautuminen hyväksytty;ACCEPTED
+A9;B9;A9 B9;a9b9@utu.fi;123461_987654_A;dgsdg;;Ilmoittautuminen hyväksytty;ACCEPTED

@@ -80,7 +80,10 @@ from schooner.util          import LogDBHandler
 from schooner.util          import Timer
 from schooner.db.core       import Course
 from schooner.db.core       import Enrollee
+from schooner.db.core       import Assignment
+from schooner.db.core       import AssignmentList
 from schooner.db.email      import Template
+from schooner.jtd           import JTDSubmission
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
 __version__     = "0.4.0 (2021-08-29)"
@@ -100,21 +103,6 @@ CONFIG_FILE = "app.conf"
 class Database():
     def __init__(self, cstring: str):
         self.cstring = cstring
-
-    def get_passed_deadlines(self):
-        sql = """
-        SELECT      * 
-        FROM        core.assignment 
-        WHERE       handler = %s
-        AND         deadline < NOW()
-        """
-        with psycopg.connect(self.cstring) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql,
-                    ('HUBBOT',)
-                )
-            return [dict(zip([key[0] for key in cur.description], row)) for row in cur]
 
     def get_submissionless_students(self, assignment:dict) -> list:
         sql = """
@@ -138,75 +126,6 @@ class Database():
                     assignment
                 )
             return [dict(zip([key[0] for key in cur.description], row)) for row in cur]
-
-    def get_assignment(self, assignment_id, course_id):
-        sql = """
-        SELECT  * 
-        FROM    core.assignment 
-        WHERE   assignment_id=%s 
-        AND     course_id=%s
-        """
-        with psycopg.connect(self.cstring) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql,
-                    (assignment_id, course_id)
-                )
-            return dict(zip([key[0] for key in cur.description], cur.fetchone()))
-    
-    def get_enrollee(self, course_id, uid):
-        sql = """
-        SELECT  * 
-        FROM    core.enrollee 
-        WHERE   course_id=%s 
-        AND     uid=%s
-        """
-        with psycopg.connect(self.cstring) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql, (course_id, uid)
-                )
-            return dict(zip([key[0] for key in cur.description], cur.fetchone()))
-
-    def register_submission(self, student:dict, assignment:dict):
-        sql = """
-        INSERT INTO core.submission (
-            assignment_id, 
-            course_id, 
-            uid,
-            content,
-            submitted, 
-            state
-        )
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        submission_date = datetime.combine(date.today() - timedelta(1), datetime.max.time())
-        with psycopg.connect(self.cstring) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql,
-                    (
-                        assignment['assignment_id'],
-                        assignment['course_id'],
-                        student['uid'],
-                        'submission content',
-                        submission_date,
-                        'draft'
-                    )
-                )
-
-    def mail_submission_status(self, submission:dict):
-        with psycopg.connect(self.cstring).cursor() as cursor:
-            course = Course(cursor, submission['course_id'])
-            enrollee = Enrollee(cursor, submission['course_id'], submission['uid'])
-            if enrollee['notifications'] == 'enabled':
-                print(course, enrollee)
-                template = Template(cursor, 'HUBREG')
-                template.parse_and_queue(
-                    submission['course_id'],
-                    submission['uid'],
-                    { 'course' : course, 'enrollee' : enrollee }
-                )
 
 def processer(
         cmd: str,
@@ -294,7 +213,6 @@ if __name__ == '__main__':
     log.addHandler(handler)
 
 
-
     args, _ = argparser.parse_known_args()
 
     #
@@ -305,11 +223,15 @@ if __name__ == '__main__':
         assignment_id   = args.clone[1]
         uid             = args.clone[2]            
         log.info(f"Cloning {assignment_id} from repository {course_id} of student {uid}")
-        cstring = f"dbname={cfg.dbname} user={cfg.dbuser}"
 
-        db = Database(cstring)
-        assignment = db.get_assignment(assignment_id, course_id)
-        student = db.get_enrollee(course_id, uid)
+        cstring = f"dbname={cfg.database} user={cfg.database}"
+        db      = Database(cstring)
+
+        with psycopg.connect(cstring) as conn:
+            with conn.cursor() as cursor:
+                assignment  = Assignment(cursor, course_id, assignment_id)
+                student     = Enrollee(cursor, course_id, uid)
+                course      = Course(cursor, course_id)
 
         tgt = os.path.join(
             cfg.submissions_directory, 
@@ -327,60 +249,75 @@ if __name__ == '__main__':
         #
         # Create a session object with the user creds in-built
         #
-        with psycopg.connect(cstring).cursor() as cursor:
-            course = Course(cursor, course_id)
-        gh_session = requests.Session()
-        gh_session.auth = (course.github_account, course.github_accesstoken)
+        gh_session      = requests.Session()
+        gh_session.auth = (course['github_account'], course['github_accesstoken'])
         
         student_repository = f"{student['github_account']}/{student['github_repository']}"
-        src = f"https://{course.github_accesstoken}:x-oauth-basic@github.com/{student_repository}.git"
+        src = f"https://{course['github_accesstoken']}:x-oauth-basic@github.com/{student_repository}.git"
 
-        log_fetch(fetchfile, f"{datetime.now()}\n Trying to fetch from: https://github.com/{student_repository}.git")
+        with open(fetchfile, 'a') as log_fetch:
+            message = f"{datetime.now()}\nTrying to fetch from: https://github.com/{student_repository}.git\n"
+            log_fetch.write(message)
 
-        #
-        # Fetch repository contents list through API call
-        # Note: if repository is not found (does not exist or bot user is not collaborator), call returns only a 'Not found' message
-        # log fetch in {date}.txt
+        assignment.update(status = None)
+        while assignment['status'] == None:
+            #
+            # Handle case: repository doesn't exist or cannot be found
+            #
+            repository_content_url = f"https://api.github.com/repos/{student_repository}/contents/"
+            if gh_session.get(repository_content_url).status_code == 404:
+                assignment.update(status = f"Student {student['uid']}: Github repository ({student_repository} not found") 
+                log.info(assignment['status'])
+                break;
+            
+            #
+            # Clone only if required folder is found from repo
+            #
+            repo_contents   = json.loads(gh_session.get(repository_content_url).text)
+            filenames       = [file['name'] for file in repo_contents]
+            if assignment['assignment_id'] not in filenames:
+                assignment.update(status = f"Required folder ({assignment['assignment_id']}) not found in student repository")
+                log.info(assignment['status'])
+                break;
 
-        repository_content_url = f"https://api.github.com/repos/{student_repository}/contents/"
+            #
+            # Fetch should happen once in a day - if path  already exists, something is wrong.
+            # For ease of testing, the old repo is now removed but this could be changed later.
+            #
+            submission_repo = os.path.join(tgt, fetchdate)
+            if os.path.exists(submission_repo):
+                with open(fetchfile, 'a') as log_fetch:
+                    log_fetch.write("Submission path already exists and will be overwritten\n")
+                shutil.rmtree(submission_repo)
 
-        if gh_session.get(repository_content_url).status_code == 404:
-            status = f"Student {student['uid']}: Github repository ({student_repository} not found"
-            log_fetch(fetchfile, status)
-            log.info(status)
+
+            #
+            # Clone and send mail if successful.
+            #
+            try: 
+                git.Git(tgt).clone(src, fetchdate)
+                with psycopg.connect(cstring) as conn:
+                    with conn.cursor() as cursor:
+                        assignment.register_as_submission(cursor, student, assignment)
+                if not os.path.exists(f"{tgt}/accepted"):
+                    os.symlink(f"{tgt}/{fetchdate}", f"{tgt}/accepted")
+                assignment.update(status = "Fetch successful")
+                break;
+
+            except Exception as e:
+                assignment.update(status = str(e))
+                log.exception(str(e))
+                break;
+
+        with open(fetchfile, 'a') as log_fetch:
+            log_fetch.write(f"{assignment['status']}\nEnd of fetch.\n")
+
+        if not assignment['status'] == "Fetch successful":
+            assignment.update(enrollee_uid = student['uid'])
+            with psycopg.connect(cstring) as conn:
+                with conn.cursor() as cursor:
+                    assignment.send_retrieval_failure_mail(cursor, assignment)
             os._exit(-1)
-
-        repo_contents = json.loads(gh_session.get(repository_content_url).text)
-        
-        #
-        # Clone only if required folder is found from repo
-        #
-        filenames = [file['name'] for file in repo_contents]
-        if assignment['assignment_id'] not in filenames:
-            status = f"Required folder ({assignment['assignment_id']}) not found in student repository"
-            log.info(status)
-            log_fetch(fetchfile, status)
-            os._exit(0)
-
-        #
-        # Fetch should happen once in a day - if path  already exists, something is wrong.
-        # For ease of testing, the old repo is now removed but this could be changed later.
-        #
-        submission_repo = os.path.join(tgt, fetchdate)
-        if os.path.exists(submission_repo):
-            log_fetch(fetchfile, "Submission path already exists and will be overwritten")
-            shutil.rmtree(submission_repo)
-
-        try: 
-            git.Git(tgt).clone(src, fetchdate)
-            db.register_submission(student, assignment)
-            if not os.path.exists(f"{tgt}/accepted"):
-                os.symlink(f"{tgt}/{fetchdate}", f"{tgt}/accepted")
-            log_fetch(fetchfile, "Fetch successful")
-        except Exception as e:
-            log_fetch(fetchfile, str(e))
-            log.exception(str(e))
-
 
     #
     # Start discrete fetches
@@ -392,14 +329,19 @@ if __name__ == '__main__':
                 log.info("Running dispatcher")
 
                 # Using local authentication -- password is never used
-                db = Database(f"dbname={cfg.dbname} user={cfg.dbuser}")
-                assignments = db.get_passed_deadlines()
+                cstring = f"dbname={cfg.database} user={cfg.database}"
+                db      = Database(cstring)
+                #assignments = db.get_passed_deadlines()        
+                with psycopg.connect(cstring) as conn:
+                    with conn.cursor() as cursor:               
+                        assignments    = AssignmentList(cursor, **{
+                            'handler':'HUBBOT'})
+                assignments = assignments.filter_deadlines()
                 filtered_students = []
 
                 # TODO: use deadline check from database instead of < 5 stuff
                 for assignment in assignments:
-                    if (date.today() - assignment['deadline']).days < 5:
-                        filtered_students = db.get_submissionless_students(assignment)
+                    filtered_students = db.get_submissionless_students(assignment)
 
                     for student in filtered_students:
                         try:
@@ -426,8 +368,8 @@ if __name__ == '__main__':
             log.exception(f"Script execution error!", exec_info = False)
             os._exit(-1)
 
-    # TODO, report success and error counts
-    log.info(f"N successful registrations, E errors in {runtime.report()}.")
+        # TODO, report success and error counts
+        log.info(f"N successful registrations, E errors in {runtime.report()}.")
 
 
 # EOF

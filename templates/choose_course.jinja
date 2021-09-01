@@ -4,7 +4,7 @@
     selected course_id is '..?cid={course_id}'
 
     REQUIRES
-        courselist: list        
+        courselist: list of course dictionaries
         
 #}
 {% block content %}
@@ -12,13 +12,13 @@
         You are not enrolled in any active course which requires a GitHub account.<br>
         If you think this is an error, please contact your course instructor.
     {% elif courselist|length == 1 %}
-        Reloading page, please wait...
+        Reloading page for course '{{ courselist[0]['course_id'] }}', please wait...
         <script>
         var url = window.location.href;
         if (url.indexOf('?') > -1) {
-            url += '&cid={{courselist[0]}}'
+            url += '&cid={{courselist[0]['course_id']}}'
         } else {
-            url += '?cid={{courselist[0]}}'
+            url += '?cid={{courselist[0]['course_id']}}'
         }
         window.location.href = url;
         </script>

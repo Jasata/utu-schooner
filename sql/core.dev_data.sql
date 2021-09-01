@@ -6,6 +6,7 @@
 --
 --  2021-08-19  Initial version.
 --  2021-08-23  Changed to schema 'core'.
+--  2021-08-31  Changed for assignment.evaluation.
 --
 
 -- Future DTE20068 (2022)
@@ -47,7 +48,8 @@ VALUES
     1,
     NULL,
     '2022-10-30',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'T02',
@@ -59,7 +61,8 @@ VALUES
     1,
     0,
     '2022-10-27',
-    NULL
+    NULL,
+    'last'
 ),
 (
     'E01',
@@ -71,7 +74,8 @@ VALUES
     NULL,
     0,
     '2022-11-07',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E02',
@@ -83,7 +87,8 @@ VALUES
     NULL,
     0,
     '2022-11-14',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E03',
@@ -95,7 +100,8 @@ VALUES
     NULL,
     0,
     '2022-11-21',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E04',
@@ -107,7 +113,8 @@ VALUES
     NULL,
     0,
     '2022-11-28',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E05',
@@ -119,7 +126,8 @@ VALUES
     NULL,
     0,
     '2022-12-05',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E06',
@@ -131,7 +139,8 @@ VALUES
     NULL,
     0,
     '2022-12-12',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q01',
@@ -143,7 +152,8 @@ VALUES
     NULL,
     0,
     '2022-10-31',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q02',
@@ -155,7 +165,8 @@ VALUES
     NULL,
     0,
     '2022-11-07',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q03',
@@ -167,7 +178,8 @@ VALUES
     NULL,
     0,
     '2022-11-14',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q04',
@@ -179,7 +191,8 @@ VALUES
     NULL,
     0,
     '2022-11-21',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q05',
@@ -191,7 +204,8 @@ VALUES
     NULL,
     0,
     '2022-11-28',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q06',
@@ -203,7 +217,8 @@ VALUES
     NULL,
     0,
     '2022-12-05',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q07',
@@ -215,19 +230,8 @@ VALUES
     NULL,
     0,
     '2022-12-12',
-    NULL
-),
-(
-    'T03',
-    'DTEK0068-3003',
-    'Component kit return',
-    'Course grade cannot be sent to Peppi until loan equipment has been returned.',
     NULL,
-    8,
-    8,
-    0,
-    '2022-12-12',
-    NULL
+    DEFAULT
 ),
 (
     'EXM',
@@ -239,7 +243,8 @@ VALUES
     147,
     2,
     '2022-12-12',
-    NULL
+    NULL,
+    'best'
 );
 
 
@@ -283,7 +288,8 @@ VALUES
     1,
     NULL,
     '2021-08-25',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'T02',
@@ -295,7 +301,8 @@ VALUES
     1,
     0,
     '2021-08-03',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q01',
@@ -307,7 +314,8 @@ VALUES
     20,
     2,
     '2021-08-29',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'Q02',
@@ -319,7 +327,8 @@ VALUES
     20,
     2,
     '2021-09-05',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E01',
@@ -331,7 +340,8 @@ VALUES
     20,
     2,
     '2021-08-24',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'E02',
@@ -343,7 +353,8 @@ VALUES
     NULL,
     2,
     '2021-09-04',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'EXM',
@@ -355,7 +366,8 @@ VALUES
     140,
     2,
     '2021-11-21',
-    NULL
+    NULL,
+    'best'
 );
 
 -- Poems course
@@ -396,7 +408,8 @@ VALUES
     40,
     0,
     '2021-08-05',
-    NULL
+    NULL,
+    DEFAULT
 ),
 (
     'T02',
@@ -408,7 +421,8 @@ VALUES
     40,
     0,
     '2021-08-12',
-    NULL
+    NULL,
+    DEFAULT
 );
 
 
