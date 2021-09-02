@@ -470,7 +470,11 @@ def register_get():
                 **parameters
             )
         elif not parameters['course_id']:
-            gitcourses = CourseList(handler = 'HUBREG', uid = sso.uid)
+            gitcourses = CourseList(
+                g.db.cursor(),
+                handler = 'HUBREG',
+                uid = sso.uid
+            )
             return flask.render_template(
                 'choose_course.jinja',
                 courselist = gitcourses,
@@ -690,6 +694,33 @@ def notifications_post():
 
 
 
+@app.route("/exercise", methods=['GET'])
+def exercise_get():
+    from schooner.api           import ExerciseArchive
+    from schooner.db.assistant  import AccessToken
+    # Until there is a way to transger SSO cookie from assistant's browser
+    # to the schooner-local-daemon, we cannot require authenticated sessions.
+    #if not sso.is_authenticated:
+    #    return (405, "Permission Denied. You must be logged")
+    try:
+        if not (token := request.args.get('token')):
+            raise AccessToken.InvalidAccessToken(
+                "Access token required and cannot be empty!"
+            )
+        submission_id = AccessToken(g.db.cursor(), token).submission_id
+        # Create archive of the exercise
+        archive = ExerciseArchive(g.db.cursor(), submission_id)
+
+        return (f"Access: {archive}", 200)
+    except KeyError as e:
+        return ("URI parameter 'token' required!", 400)
+    except AccessToken.InvalidAccessToken as e:
+        return (f"{str(e)}", 404)   # 404 Not Found
+    except Exception as e:
+        app.logger.exception(f"{str(e)}")
+        return (f"Internal server error - see logs!\n{str(e)}", 500)
+
+
 ###############################################################################
 #
 # Static content
@@ -720,7 +751,7 @@ def notifications_post():
 @app.route('/', methods=['GET'])
 def send_ui(path = 'index.html'):
     """Send static content (HTML/CSS/JS/images/...)."""
-    log_request(request)
+    #log_request(request)
     return flask.send_from_directory('html', path)
 
 

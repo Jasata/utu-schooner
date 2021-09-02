@@ -73,6 +73,16 @@ A certificate authority will use a CSR to create your SSL certificate, but it do
     ...
     -----END PRIVATE KEY-----
 
+## VERY IMPORTANT - SSL Certificate Chains
+
+Source: [ServerFault](https://serverfault.com/questions/308070/sec-error-unknown-issuer-but-only-with-firefox-and-ie6)
+
+_Some browsers may complain about a certificate signed by a well-known certificate authority, while other browsers may accept the certificate without issues. This occurs because the issuing authority has signed the server certificate using an intermediate certificate that is not present in the certificate base of well-known trusted certificate authorities which is distributed with a particular browser. In this case the authority provides a bundle of chained certificates which should be concatenated to the signed server certificate. The server certificate must appear before the chained certificates in the combined file_
+
+**The site certificate MUST appear first in the bundle.**
+
+There may not be a bundle, and you may need to concatenate it.  
+(`cat schooner_utu_fi_cert.cer GEANT_OV_RSA_CA_4.pem > schooner_utu_fi_combined.cer`)
 
 ## Nginx Configuration
 
@@ -87,10 +97,12 @@ A certificate authority will use a CSR to create your SSL certificate, but it do
     `ln -s /etc/uwsgi/apps-available/schooner.utu.fi.ini /etc/uwsgi/apps-enabled`
   - Restart uWSGI to read new enabled app:  
     `systemctl restart uwsgi.service`
+- Create certificate bundle  
+  `cat schooner_utu_fi_cert.cer GEANT_OV_RSA_CA_4.pem > schooner_utu_fi_combined.cer`
 - Store SSL certificates under `/etc/ssl`  
   Files need to be copied because linking would make them in accessible to non-root users.
-  - Copy the `.cer` file to `/etc/ssl/certs`:  
-    `cp /root/cert/schooner_utu_fi_cert.cer /etc/ssl/certs/`
+  - Copy the created `.cer` file to `/etc/ssl/certs`:  
+    `cp /root/cert/schooner_utu_fi_combined.cer /etc/ssl/certs/`
   - Copy the `.key` private key to `/etc/ssl/private/`  
     `cp /root/cert/schooner.utu.fi.key /etc/ssl/private/`  
     `chmod 640 /etc/ssl/private/schooner.utu.fi.key`  

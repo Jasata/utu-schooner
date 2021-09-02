@@ -14,35 +14,6 @@ CREATE SCHEMA assistant;
 GRANT USAGE ON SCHEMA assistant TO "www-data";
 GRANT USAGE ON SCHEMA assistant TO schooner_dev;
 
---
--- Assistant module configuration
---
-\echo '=== assistant.config'
-CREATE TABLE assistant.config
-(
-    rowlock             BOOL            NOT NULL PRIMARY KEY DEFAULT TRUE,
-    token_duration      TIME            NOT NULL DEFAULT '00:05:00',
-    dummy               VARCHAR(10)     NOT NULL DEFAULT 'dummy',
-    CONSTRAINT config_rowlock_chk
-        CHECK (rowlock)
-);
-CREATE RULE assistant_config_delete
-AS
-    ON DELETE
-    TO assistant.config
-    DO INSTEAD NOTHING;
-INSERT INTO assistant.config (rowlock) VALUES (TRUE);
-
-GRANT ALL PRIVILEGES ON assistant.config TO schooner_dev;
-GRANT SELECT ON assistant.config TO "www-data";
-
-COMMENT ON TABLE assistant.config IS
-'Configurations used by functions and procedures. You can only UPDATE this table.';
-COMMENT ON COLUMN assistant.config.rowlock IS
-'PK column which limits the number of rows to one.';
-COMMENT ON COLUMN assistant.config.token_duration IS
-'Time which is added to CURRENT_TIMESTAMP when accesstoken -table row is inserted.';
-
 
 \echo '=== assistant.assistant'
 CREATE TABLE assistant.assistant
@@ -119,6 +90,10 @@ CREATE TABLE assistant.accesstoken
     submission_id       INT         NOT NULL,
     token               INT         NOT NULL,
     expires             TIMESTAMP   NOT NULL,
+    FOREIGN KEY (submission_id)
+        REFERENCES core.submission (submission_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
     CONSTRAINT accesstoken_pk
         PRIMARY KEY (submission_id),
     CONSTRAINT accesstoken_expires_chk
@@ -191,7 +166,7 @@ assistant.evaluation_begin(
     LANGUAGE PLPGSQL
     SECURITY DEFINER
     VOLATILE
-    STRICT
+    CALLED ON NULL INPUT
 AS $$
 -- Prerequisites:
 --  1)  Assistant is registered for the same course as the submission is for
@@ -222,13 +197,13 @@ DECLARE
     v_token_duration    TIME;
 BEGIN
     -- Query token duration from config
-    SELECT      token_duration
-    FROM        assistant.config
+    SELECT      access_token_duration
+    FROM        system.config
     WHERE       rowlock = TRUE
     INTO        v_token_duration;
     IF NOT FOUND THEN
         RAISE EXCEPTION
-        'ERROR: Configuration table ''assistant.config'' is empty!'
+        'ERROR: Configuration table ''system.config'' is empty!'
         USING HINT = 'CONFIG_ERROR';
     END IF;
     -- LOCK submission row
@@ -349,7 +324,7 @@ assistant.evaluation_close(
     LANGUAGE PLPGSQL
     SECURITY DEFINER
     VOLATILE
-    STRICT
+    CALLED ON NULL INPUT
 -- NOTE:    public.submission.state goes into 'rejected' ONLY if the submission
 --          cannot be evaluated. For example, HUBBOT has found the required
 --          directory in the repository and assumed that the submission is OK,
@@ -503,7 +478,7 @@ assistant.evaluation_reject(
     LANGUAGE PLPGSQL
     SECURITY DEFINER
     VOLATILE
-    STRICT
+    CALLED ON NULL INPUT
 AS $$
 DECLARE
     r_submission        RECORD;
@@ -636,6 +611,42 @@ END
 $$;
 GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO "www-data";
 GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO schooner_dev;
+
+
+
+
+\echo '=== assistant.accesstoken_validate()'
+CREATE OR REPLACE FUNCTION
+assistant.accesstoken_validate(
+    in_accesstoken      INTEGER
+)
+    RETURNS INTEGER
+    LANGUAGE PLPGSQL
+    SECURITY INVOKER
+    VOLATILE
+    STRICT
+AS $$
+-- Returns NULL if the token is not valid.
+-- If valid, returns submission_id.
+DECLARE
+    r_accesstoken       RECORD;
+BEGIN
+    SELECT      *
+    FROM        assistant.accesstoken
+    WHERE       token = in_accesstoken
+    INTO        r_accesstoken;
+    IF NOT FOUND THEN
+        RETURN NULL;
+    ELSEIF r_accesstoken.expires < CURRENT_TIMESTAMP THEN
+        RETURN NULL;
+    END IF;
+    RETURN r_accesstoken.submission_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO "www-data";
+GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO schooner_dev;
+
+
 
 
 -- EOF

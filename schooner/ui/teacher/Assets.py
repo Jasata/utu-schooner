@@ -15,7 +15,7 @@
 #       Submission.content should contain the asset ID (component kit number).
 #       Submission is updated to 'accepted' when the assets are returned.
 #
-#       -   Assignment.handler must be 'BORROWUI'. This allows this class to
+#       -   Assignment.handler must be 'ASSETMGR'. This allows this class to
 #           filter out other assignments.
 #       -   Assignment.retries must be NULL (unlimited). It is possible that
 #           the student must return one asset (broken? other reason?) and

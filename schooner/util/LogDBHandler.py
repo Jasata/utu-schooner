@@ -36,7 +36,7 @@ class LogDBHandler(logging.Handler):
                         'level'     : truncate(record.levelname, 10),
                         'message'   : truncate(record.getMessage(), 1000),
                         'source'    : truncate(
-                            f"({os.getpid()}) {record.filename}:{record.lineno} {record.funcName}",
+                            f"({os.getpid()}) {record.filename}:{record.lineno} {record.funcName if record.funcName == '<module>' else record.funcName + '()'}",
                             100
                         )
                     }

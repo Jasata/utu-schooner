@@ -5,6 +5,7 @@
 -- Jani Tammi <jasata@utu.fi>
 --
 --  2021-08-29  Initial version.
+--  2021-09-02  Add system.config.
 --
 -- Execute as 'schooner' (for ownership)
 --
@@ -13,6 +14,38 @@ DROP SCHEMA IF EXISTS system CASCADE;
 CREATE SCHEMA system;
 GRANT USAGE ON SCHEMA system TO "www-data";
 GRANT USAGE ON SCHEMA system TO schooner_dev;
+
+
+--
+-- System configuratin
+--
+\echo '=== system.config'
+CREATE TABLE system.config
+(
+    rowlock                 BOOL            NOT NULL PRIMARY KEY DEFAULT TRUE,
+    access_token_duration   TIME            NOT NULL DEFAULT '00:05:00',
+    exercise_directory      VARCHAR(512)    NOT NULL DEFAULT '/srv/schooner',
+    CONSTRAINT config_rowlock_chk
+        CHECK (rowlock)
+);
+CREATE RULE system_config_delete
+AS
+    ON DELETE
+    TO assistant.config
+    DO INSTEAD NOTHING;
+INSERT INTO system.config (rowlock) VALUES (TRUE);
+
+GRANT SELECT ON system.config TO schooner_dev;
+GRANT SELECT ON system.config TO "www-data";
+
+COMMENT ON TABLE system.config IS
+'Configurations used by functions and procedures. You can only UPDATE this table.';
+COMMENT ON COLUMN system.config.rowlock IS
+'PK column which limits the number of rows to one.';
+COMMENT ON COLUMN system.config.access_token_duration IS
+'Time which is added to CURRENT_TIMESTAMP when accesstoken -table row is inserted.';
+COMMENT ON COLUMN system.config.exercise_directory IS
+'Server location for cloned exercises.';
 
 
 --
@@ -28,7 +61,7 @@ CREATE TABLE system.log
     source          VARCHAR(100)    NULL
 );
 GRANT ALL PRIVILEGES ON system.log TO schooner_dev;
-GRANT SELECT ON system.log TO "www-data";
+GRANT ALL PRIVILEGES ON system.log TO "www-data";
 
 COMMENT ON TABLE system.log IS
 'For custom Python logging handler, but can be used for other logging as well.';

@@ -10,6 +10,7 @@
 #   2019-12-07  Initial version.
 #   2019-12-23  Add SSO object creation and .update()
 #               @app.before_request
+#   2021-09-02  Add DB log (system.log) handler
 #
 #
 # Code in this file gets executed ONLY ONCE, when the uWSGI is started.
@@ -17,7 +18,7 @@
 # decorated functions, which are executed once per HTTP Request.
 #
 # How this file is "reached" is defined by the uWSGI configuration file
-# (/etc/uwsgi/apps-available/vm.utu.fi.ini) which specifies:
+# (/etc/uwsgi/apps-available/schooner.utu.fi.ini) which specifies:
 #       Flask application directory     (chdir = /var/www/...)
 #       Flask/Python module             (module = application)
 #       Flask application object        (callable = app)
@@ -54,6 +55,7 @@ from flask                  import request
 # Local module(s)
 from sso                    import SSO
 
+from schooner.util          import LogDBHandler
 
 # For some reason, if Flask() is given 'debug=True',
 # uWSGI cannot find the application and startup fails.
@@ -149,6 +151,15 @@ app.logger.setLevel(
         logging.DEBUG
     )
 )
+#
+# Add DB Log Handler
+#
+app.logger.addHandler(
+    LogDBHandler(
+        app.config.get('PGSQL_DATABASE'),
+        level = app.config.get('LOG_LEVEL', 'DEBUG')
+    )
+)
 app.logger.info(
     "Logging enabled for level {} ({})"
     .format(
@@ -198,7 +209,7 @@ def before_request():
     #
     g.t_real_start = time.perf_counter()
     g.t_cpu_start  = time.process_time()
-    app.logger.debug("@app.before_request")
+    #app.logger.debug("@app.before_request")
 
 
     #
@@ -212,6 +223,8 @@ def before_request():
         cursor = g.db.cursor()
         cursor.execute("PRAGMA foreign_keys = 1")
     """
+    # We might gain a performance boost, if we can solve keep-alive issue
+    # and keep a connection open, just create and close cursors...
     if not hasattr(g, 'db'):
         g.db = psycopg.connect(
             f"dbname={app.config.get('PGSQL_DATABASE')} \
@@ -248,10 +261,13 @@ def teardown_request(error):
     """
     Closes the database again at the end of the request.
     """
-    app.logger.debug(
-        "@app.teardown_request ({:.1f}ms)"
-        .format((time.perf_counter() - g.t_real_start) * 1000)
-    )
+    # app.logger.debug(
+    #     "@app.teardown_request: {:.1f} ms for '{}'"
+    #     .format(
+    #         (time.perf_counter() - g.t_real_start) * 1000,
+    #         request.path
+    #     )
+    # )
     if hasattr(g, 'db'):
         g.db.close()
 

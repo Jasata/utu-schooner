@@ -320,7 +320,7 @@ core.submission_last_retrieval_date(
     LANGUAGE PLPGSQL
     SECURITY INVOKER
     VOLATILE
-    STRICT
+    CALLED ON NULL INPUT
 AS $$
 -- Assignment that has a deadline DATE X will be retrieved right after
 -- midnight, or X + 1.

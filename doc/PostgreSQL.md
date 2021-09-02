@@ -37,7 +37,8 @@ Run as `root`:
 ## GUI options
 
 - [pgAdmin](https://www.pgadmin.org/) **This seems to be the go-to solution.**
-- [DBeaver](https://dbeaver.io/) _Free community edition - does it create ER diagrams?_
+- [DBeaver](https://dbeaver.io/) _Free community edition - does it create ER diagrams? YES_  
+  _File -> New -> DBeaver / ER Diagram -> (choose schemas and objects, name it, go)._
 - [OmniDB](https://omnidb.org/)
 - [HeidiSQL](https://www.heidisql.com/) _New, somewhat buggy, but developed for simplicity._
 
@@ -205,7 +206,50 @@ SELECT (-1::uint);
 ```
 **Our solution:** We will use table constraints to enforce intended value ranges.
 
-## N-to-N table connecting three tables
+
+## PostgreSQL does not have partial unique constrains
+
+Similar effect can be achieved with partial unique indexes:
+```sql
+CREATE TABLE test
+(
+    id        INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY,
+    aid       INTEGER NOT NULL,
+    cid       INTEGER NOT NULL,
+    category  VARCHAR(8) NOT NULL DEFAULT 'draft',
+    CONSTRAINT test_category_chk
+        CHECK (category IN ('draft', 'accepted', 'rejected'))
+);
+
+-- Allow only single 'draft' for combination of aid, cid and category
+CREATE UNIQUE INDEX test_category_draft_unq
+    ON test (aid, cid, category)
+    WHERE (category = 'draft');
+
+INSERT INTO test (aid, cid, category)
+VALUES  (1, 1, 'draft'),    (1, 2, 'draft'),    (2, 1, 'draft'),
+        (1, 1, 'accepted'), (1, 2, 'accepted'), (2, 1, 'accepted'),
+        (1, 1, 'accepted'), (1, 2, 'accepted'), (2, 1, 'accepted'),
+        (1, 1, 'rejected'), (1, 2, 'rejected'), (2, 1, 'rejected'),
+        (1, 1, 'rejected'), (1, 2, 'rejected'), (2, 1, 'rejected');
+
+INSERT INTO test (aid, cid, category)
+VALUES  (1, 1, 'draft');
+
+ERROR:  duplicate key value violates unique constraint "test_category_draft_unq"
+DETAIL:  Key (aid, cid, category)=(1, 1, draft) already exists.
+```
+
+Unique constraint has few drawbacks:
+- Does not allow creating foreign keys referencing that particular unique field.
+- Indexes cannot be deferred, which becomes a performance issue on large bulk inserts.
+- `ON CONFLICT` clause cannot be used because it requires an actual constraint.
+
+This is still a usable approach for "attribute" -type columns, like in the above example.
+
+## N-to-N table connecting three tables (Y-link table)
+
+_This is a related to the above discussion about partial unique indexes._
 
 Oracle allows:
 ```sql
@@ -224,7 +268,9 @@ CREATE TABLE linked
 );
 ```
 
-PostgreSQL does not. It will enforce `NOT NULL` on all PK columns. This may be "by-the-book" according to the standards, but from a systems architect point of view, Oracle is right not to follow this one.
+**PostgreSQL does not.** It will enforce `NOT NULL` on all PK columns. This may be "by-the-book" according to the standards, but from a systems architect point of view, Oracle is right not to follow this one.
+
+In addition, there is an issue how NULL values are treated. Standard approach is that anything compared to NULL is always FALSE, but for the Oracle approach to work, this comparison must yield TRUE. So, even if PostgreSQL would not enforce NOT NULL primary key columns, it still would not work in PostgreSQL.
 
 Using PostgreSQL, we have to resort to two partial indexes to achieve the same effect:
 ```sql
@@ -258,6 +304,9 @@ INSERT INTO linked VALUES (1, 1, 1);
 
 It should be clear that this gets untenable very fast, if the number of columns grows...
 
+## STRICT vs CALLED ON NULL INPUT
+
+Use `STRICT` only if you really want the function / procedure to immediately return NULL, if any of the arguments is NULL. Otherwise, use `CALLED ON NULL INPUT`...
 
 ## PL/Python - Python Procedural Language
 

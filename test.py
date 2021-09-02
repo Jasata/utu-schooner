@@ -276,7 +276,16 @@ from schooner.db.core   import AssignmentList
 from schooner.db.system import LogList
 from schooner.db.core   import CourseList
 
+from schooner.db.assistant  import AccessToken
+
 import datetime
+
+class demo(dict):
+    __getattr__ = dict.__getitem__
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 if __name__ == '__main__':
 
@@ -313,5 +322,12 @@ if __name__ == '__main__':
         cl = CourseList(cursor, uid = 'jasata')
         for c in cl:
             print(c['code'], c['name'])
+
+
+    d = demo({'a' : 12, 'b' : 11})
+    print(str(d))
+    print(d.a)
+    print(d['b'])
+
 
 # EOF
