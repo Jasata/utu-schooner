@@ -133,25 +133,30 @@ def processer(
         stdout = subprocess.DEVNULL,
         stderr = subprocess.DEVNULL    
         ):
-        """Call .subprocess("ls", stdout = subprocess.PIPE), if you want output. Otherwise the output is sent to /dev/null."""        
-        if not shell:
-            # Set empty double-quotes as empty list item            
-            # Required for commands like; ssh-keygen ... -N ""           
-            cmd = ['' if i == '""' or i == "''" else i for i in cmd.split(" ")]
-        prc = subprocess.run(
-            cmd,
-            shell  = shell,
-            stdout = stdout,
-            stderr = stderr        
-        )
-        # Non-zero return code indicates an error        
-        if prc.returncode:
-            raise ValueError(
-                f"code: {prc.returncode}, command: '{cmd}'"            )
-        # Return output (stdout, stderr)
-        return (
-            prc.stdout.decode("utf-8") if stdout == subprocess.PIPE else None,
-            prc.stderr.decode("utf-8") if stderr == subprocess.PIPE else None        )
+        """Call .subprocess("ls", stdout = subprocess.PIPE), if you want output. Otherwise the output is sent to /dev/null."""
+        try:
+            if not shell:
+                # Set empty double-quotes as empty list item            
+                # Required for commands like; ssh-keygen ... -N ""           
+                cmd = ['' if i == '""' or i == "''" else i for i in cmd.split(" ")]
+            prc = subprocess.run(
+                cmd,
+                shell  = shell,
+                stdout = stdout,
+                stderr = stderr        
+            )
+            # Return output (return code, stdout, stderr)
+            return (
+                prc.returncode,
+                prc.stdout.decode("utf-8") if stdout == subprocess.PIPE else None,
+                prc.stderr.decode("utf-8") if stderr == subprocess.PIPE else None
+            )
+        except Exception as e:
+            return (
+                -1,
+                str(e),
+                ""
+            )
 
 def log_fetch(fetchfile, message):
     with open(fetchfile, 'a') as log_fetch:
@@ -311,27 +316,29 @@ if __name__ == '__main__':
 
         with open(fetchfile, 'a') as log_fetch:
             log_fetch.write(f"{assignment['status']}\nEnd of fetch.\n")
+        
+        sys.stdout.write(assignment['status'])
 
         if not assignment['status'] == "Fetch successful":
             assignment.update(enrollee_uid = student['uid'])
             with psycopg.connect(cstring) as conn:
                 with conn.cursor() as cursor:
                     assignment.send_retrieval_failure_mail(cursor, assignment)
-            os._exit(-1)
+            os._exit(1)
 
     #
     # Start discrete fetches
     #
     else:
-        errors = []
+        errors  = []
+        fetches = []
         try:
             with Lockfile(cfg.lockfile):
                 log.info("Running dispatcher")
 
                 # Using local authentication -- password is never used
                 cstring = f"dbname={cfg.database} user={cfg.database}"
-                db      = Database(cstring)
-                #assignments = db.get_passed_deadlines()        
+                db      = Database(cstring)     
                 with psycopg.connect(cstring) as conn:
                     with conn.cursor() as cursor:               
                         assignments    = AssignmentList(cursor, **{
@@ -339,37 +346,35 @@ if __name__ == '__main__':
                 assignments = assignments.filter_deadlines()
                 filtered_students = []
 
-                # TODO: use deadline check from database instead of < 5 stuff
                 for assignment in assignments:
                     filtered_students = db.get_submissionless_students(assignment)
-
                     for student in filtered_students:
                         try:
-                            clone = processer(f"python hubbot.py --clone {assignment['course_id']} {assignment['assignment_id']} {student['uid']}")
-                            if not clone[1] == None:
-                                errors.append({
-                                    'id': student['uid'],
-                                    'error': str(clone[1] )
-                                })
+                            fetchstring = f"{assignment['course_id']} {assignment['assignment_id']} {student['uid']}"
+                            clone = processer(f"python hubbot.py --clone {fetchstring}")
+                            fetches.append(clone)
                         except Exception as e:
-                            errors.append({
-                                'id': student['uid'],
-                                'error': str(e)
-                            })
-
-                # For manual testing
-                # for row in errors:
-                #    print(
-                #        f"==[{row['id']}]==========================\n{row['error']}"
-                #    )
+                            fetches.append([-1, None, str(e)])
+                            log.error(str(e))
         except Lockfile.AlreadyRunning as e:
             log.error("Execution cancelled! Lockfile found (another process still running).")
         except Exception as ex:
             log.exception(f"Script execution error!", exec_info = False)
             os._exit(-1)
 
-        # TODO, report success and error counts
-        log.info(f"N successful registrations, E errors in {runtime.report()}.")
+        # Report success and error counts
+        success     = 0
+        not_found   = 0
+        errors      = 0
+        for fetch in fetches:
+            print(fetch)
+            if fetch[0] == 0:
+                success +=1
+            elif fetch[0] == 1:
+                not_found +=1
+            else:
+                errors += 1
+        log.info(f"Of {len(fetches)} fetches: {success} successful registrations, {not_found} not found, {errors} errors in {runtime.report()}.")
 
 
 # EOF

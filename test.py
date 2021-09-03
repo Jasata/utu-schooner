@@ -324,10 +324,47 @@ if __name__ == '__main__':
             print(c['code'], c['name'])
 
 
-    d = demo({'a' : 12, 'b' : 11})
-    print(str(d))
-    print(d.a)
-    print(d['b'])
+        # Enrollee.notifications test
+        from schooner.db.core import Enrollee
+        """
+        e = Enrollee(cursor, 'DTEK0068-3002', 'jasata')
+        print(str(e))
+        #os._exit(0)
+        e['email'] = 'jatuhat@utu.fi'
+        print(e.pk)
+        print(e)
+        e.db_update()
+        #cursor.connection.commit()
+        """
+        try:
+            f = Enrollee(cursor, "course")
+        except Exception as e:
+            print(str(e))
+        g = Enrollee(cursor)
+        h = Enrollee(cursor, 'DTEK0068-3002', 'jasata')
+
+        from schooner.db.core   import Course
+        c = Course(cursor, 'DTEK0068-3002')
+        for k, v in c.items():
+            print(k, "=", v)
+        c['email'] = 'dte20068@utu.fi'
+        c.db_update()
+    """
+    # Why does this print root keys twice?
+    from schooner.util import AppConfig
+    allCfg = AppConfig("cron.job/app.conf")
+    for k, v in allCfg.items():
+        if isinstance(v, dict):
+            for k2, v2 in v.items():
+                print(f"{k}.{k2} = {v2}")
+        else:
+            print(f"{k} = {v}")
+        for k, v in cfg.items():
+            print(k, "=", v)
+
+    for k in allCfg.keys():
+        print("KEY", k)
+    """
 
 
 # EOF

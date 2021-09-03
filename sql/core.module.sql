@@ -195,7 +195,7 @@ CREATE TABLE core.enrollee
         CHECK (notifications IN ('enabled', 'disabled'))
 );
 GRANT ALL PRIVILEGES ON core.enrollee TO schooner_dev;
-GRANT SELECT ON core.enrollee TO "www-data";
+GRANT SELECT, UPDATE ON core.enrollee TO "www-data";
 
 COMMENT ON TABLE core.enrollee IS
 'List of students enrolled to a course. NOTE: Redundant information for same student enrolled again, or in a different course, is accepted.';

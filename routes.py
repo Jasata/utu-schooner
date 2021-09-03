@@ -473,8 +473,15 @@ def register_get():
             gitcourses = CourseList(
                 g.db.cursor(),
                 handler = 'HUBREG',
-                uid = sso.uid
+                uid = sso.uid,
+                ongoing = True
             )
+            parameters['msg_emptylist'] = """
+            You do not seem to be enrolled in any on-going courses that require GitHub registration. If this is an error, please email your course / instructor.
+            """
+            parameters['message'] = """
+            You are currently enrolled in more than one on-going courses with GitHub registration. Please choose which course you want to register your account for.
+            """
             return flask.render_template(
                 'choose_course.jinja',
                 courselist = gitcourses,
@@ -482,9 +489,11 @@ def register_get():
             )
         else:
             # Render edit/enter view
+            from schooner.api import GitRegistration
             return flask.render_template(
                 'register.jinja',
-                registration = api.GitHubAccountRegistration(
+                registration =  GitRegistration(
+                    g.db.cursor(),
                     parameters['course_id'],
                     parameters['uid']
                 ),
@@ -549,29 +558,29 @@ def register_post():
         )
     # Application logic
     try:
-        r = api.GitHubAccountRegistration(
+        # Get schooner.api.GitRegistration(cursor, enrollee)
+        from schooner.api import GitRegistration
+        reg = GitRegistration(
+            g.db.cursor(),
             data['cid'],
             data['uid']
         )
-        app.logger.info(
-            f"""Course's ('{r.course_id}') GitHub registration is{(" not", "")[int(r.is_open)]} open."""
-        )
         # If registration is not open (assignment.deadline passed)
-        if not r.is_open:
+        if not reg['github_registration_open'] == 'y':
             return flask.render_template(
                 "internal_error.jinja",
                 title = "Account registration is no longer open",
-                message = f"""GitHub account registration assignment deadline ('{r.deadline}') for course '{r.course_id}' has closed and no new submissions can be accepted."""
+                message = f"""GitHub account registration assignment deadline ('{reg['deadline']}') for course '{reg['cid']}' has closed and no new submissions can be accepted."""
             )
         #
         # Save submitted account name
         #
-        app.logger.debug(r.submit(data['account_name']))
-        # To-be replaced with redirec()
+        reg.register_account(
+            data['account_name']
+        )
         return flask.redirect(f"/register.html?cid={data['cid']}")
     except Exception as e:
-        # TODO: Log exception somewhere we can SEE it! Like... log -table?
-        app.logger.exception(f"Unable to handle GitHub registration! {str(e)}")
+        app.logger.exception(f"Unable to handle GitHub account registration! {str(e)}")
         return flask.render_template(
             'internal_error.jinja',
             title = "Registration Error",
@@ -599,19 +608,36 @@ def notifications_get():
                 **parameters
             )
         elif not parameters['course_id']:
-            gitcourses = api.Enrollee.gitcourseids(parameters['uid'])
-            app.logger.debug(f"Git Courses: {str(gitcourses)}")
+            mycourses = CourseList(
+                g.db.cursor(),
+                uid = parameters['uid'],
+                ongoing = True
+            )
+            #app.logger.debug(f"My Courses: {str(mycourses)}")
+            parameters['msg_emptylist'] = """
+            You do not seem to be enrolled in any courses. If this is an error, please email your course / instructor.
+            """
+            parameters['message'] = """
+            You are currently enrolled in more than one on-going course. Please choose which course you want to configure notification setting for.
+            """
             return flask.render_template(
                 'choose_course.jinja',
-                courselist = gitcourses,
+                courselist = mycourses,
                 **parameters
             )
         else:
             #############################################################
             # Render edit/enter view
+            from schooner.db.core import Course
+            from schooner.db.core import Enrollee
             return flask.render_template(
-                'register.jinja',
-                registration = api.GitHubAccountRegistration(
+                'notification.jinja',
+                course = Course(
+                    g.db.cursor(),
+                    parameters['course_id']
+                ),
+                enrollee = Enrollee(
+                    g.db.cursor(),
                     parameters['course_id'],
                     parameters['uid']
                 ),
@@ -631,18 +657,11 @@ def notifications_get():
 @app.route('/notifications.html', methods=['POST'])
 def notifications_post():
     """Accept notifications configuration from user."""
-    import string
     # Expects:
     #       form['cid']             enrollee.course_id
     #       form['uid']             enrollee.uid
     requiredkeys = ("cid", "uid")
     # GitHub allowed characters. We'll use it also for the course_id...
-    allowedchars = list(
-        string.ascii_lowercase +
-        string.ascii_uppercase +
-        string.digits +
-        '.-_'
-    )
     try:
         # Require authenticated session
         if not sso.is_authenticated:
@@ -652,6 +671,10 @@ def notifications_post():
         # process FORM data
         issues = []
         data = request.form.to_dict(flat = True)
+        data['notifications'] = data.get('notifications', 'disabled')
+        if data['notifications'] != 'disabled':
+            data['notifications'] = 'enabled'
+        #app.logger.info(str(data))
         for key in requiredkeys:
             if key not in data:
                 issues.append(
@@ -661,9 +684,6 @@ def notifications_post():
             raise ValueError(
                 f"Malformed POST data: {', '.join(issues)}"
             )
-        # Strip characters not in allowedchars
-        for key in data.keys():
-            data[key] = "".join(c for c in data[key] if c in allowedchars)
 
     except Exception as e:
         return flask.render_template(
@@ -673,16 +693,18 @@ def notifications_post():
         )
     # Application logic
     try:
-        r = api.Enrollee(
+        from schooner.db.core import Enrollee
+        enrollee = Enrollee(
+            g.db.cursor(),
             data['cid'],
             data['uid']
         )
+        enrollee['notifications'] = data['notifications']
         #
         # Save submitted notifications configuration
         #
-        app.logger.debug(r.submit(data['notifications']))
-        # To-be replaced with redirec()
-        return flask.redirect(f"/register.html?cid={data['cid']}")
+        enrollee.db_update()
+        return flask.redirect(f"/notifications.html?cid={data['cid']}")
     except Exception as e:
         # TODO: Log exception somewhere we can SEE it! Like... log -table?
         app.logger.exception(f"Unable to handle notifications configuration! {str(e)}")

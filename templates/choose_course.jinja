@@ -4,13 +4,15 @@
     selected course_id is '..?cid={course_id}'
 
     REQUIRES
-        courselist: list of course dictionaries
+    title: str          for <TITLE> tag in the 'layout.jinja'
+    message: str        Message displayed on top.
+    msg_emptylist: str  Message to display if the 'courselist' is empty.
+    courselist:         list of course dictionaries
         
 #}
 {% block content %}
     {% if not courselist %}
-        You are not enrolled in any active course which requires a GitHub account.<br>
-        If you think this is an error, please contact your course instructor.
+        <div>{{ msg_emptylist }}</div>
     {% elif courselist|length == 1 %}
         Reloading page for course '{{ courselist[0]['course_id'] }}', please wait...
         <script>
@@ -37,7 +39,7 @@
                 }
             }
         </script>
-        <div>You are currently enrolled in more than one on-going course which requires a GitHub account. Please choose which course will you register your account to.</div>
+        <div>{{ message }}</div>
         <select id="cid" name="cid" onchange="getCourseSelection(this)">
             <option value="">Choose course</option>
         {% for course in courselist %}

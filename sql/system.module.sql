@@ -24,7 +24,7 @@ CREATE TABLE system.config
 (
     rowlock                 BOOL            NOT NULL PRIMARY KEY DEFAULT TRUE,
     access_token_duration   TIME            NOT NULL DEFAULT '00:05:00',
-    exercise_directory      VARCHAR(512)    NOT NULL DEFAULT '/srv/schooner',
+    submissions_directory   VARCHAR(512)    NOT NULL DEFAULT '/srv/schooner/submissions',
     CONSTRAINT config_rowlock_chk
         CHECK (rowlock)
 );
@@ -44,7 +44,7 @@ COMMENT ON COLUMN system.config.rowlock IS
 'PK column which limits the number of rows to one.';
 COMMENT ON COLUMN system.config.access_token_duration IS
 'Time which is added to CURRENT_TIMESTAMP when accesstoken -table row is inserted.';
-COMMENT ON COLUMN system.config.exercise_directory IS
+COMMENT ON COLUMN system.config.submissions_directory IS
 'Server location for cloned exercises.';
 
 

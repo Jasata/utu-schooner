@@ -12,6 +12,8 @@
 #   Raises AccessToken.InvalidAccessToken if the token is not valid.
 #   Has only one attribute: .submission_id
 #
+#   Possibly later: also create access tokens?
+#
 
 
 class AccessToken:

@@ -1,43 +1,23 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Schooner - Course Management System
 # University of Turku / Faculty of Technilogy / Department of Computing
 # (c) 2021, Jani Tammi <jasata@utu.fi>
 #
-# GitHubAccountRegistration.py - GitHub account registration data
-#   2021-08-18  Initial version.
-#   2021-08-19  Query updated for enrollee table changes.
-#   
+# GitRegistration.py - Data dictionary class for Git registration
+#   2021-09-03  Initial version.
 #
-# Class creates a dot-notation access dictionary, containing the
-# keys from the query's SELECT list.
 #
-import datetime
-from flask import g
+from schooner.db.email import Template
+from schooner.jtd      import JTDSubmission
 
 
-class GitHubAccountRegistration(dict):
-    """GitHub account registration object. Typical HUBREG -handler assignment (Github account registration assignment) accepts unlimited number of submissions (allowing the student to change the account and/or repository, for whatever reason). For application point-of-view, the newest submission for this assignment is what is interesting, and older submissions are disregarded."""
+class GitRegistration(dict):
 
-
-    def __custom_get__(self, key):
-        """For all DotDict.key access, missing or otherwise."""
-        return self.get(key, self.get('*', None))
-
-
-    __getattr__ = __custom_get__
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-
-
-    def __missing__(self, key):
-        """For DefaultDotDict[key] access, missing keys."""
-        return self.get('*', None)
-
-
-    def __init__(self, course_id: str, uid: str) -> None:
+    def __init__(self, cursor, course_id: str, uid: str) -> None:
         """Load object with registration data."""
+        self.cursor = cursor
         SQL = """
             SELECT      course.course_id,
                         course.code AS course_code,
@@ -97,38 +77,34 @@ class GitHubAccountRegistration(dict):
                             AND
                             assignment.assignment_id = submission.assignment_id
                         )
-            WHERE		course.course_id = %(course_id)s
+            WHERE       course.course_id = %(course_id)s
         """
-        with g.db.cursor() as c:
-            if c.execute(SQL, locals()).rowcount:
-                self.update(dict(zip([key[0] for key in c.description], c.fetchone())))
-            else:
-                raise ValueError(f"Course ('{course_id}') not found!")
-                #self.update(dict(zip([key[0] for key in c.description], [None] * len(c.description))))
+        if cursor.execute(SQL, locals()).rowcount:
+            self.update(
+                dict(
+                    zip(
+                        [key[0] for key in cursor.description],
+                        cursor.fetchone()
+                    )
+                )
+            )
+        else:
+            raise ValueError(f"Course ('{course_id}') not found!")
+
         # Other exceptional reasons
-        if not self.assignment_id:
-            raise ValueError(f"Course ('{course_id}') does not have GitHub account registration!")
-        if not self.uid:
-            raise ValueError(f"Student ('{uid}') is not enrolled in course ('{course_id}')!")
+        if not self['assignment_id']:
+            raise ValueError(
+                f"Course ('{course_id}') does not have GitHub account registration assignment!"
+            )
+        if not self['uid']:
+            raise ValueError(
+                f"Student ('{uid}') is not enrolled in course ('{course_id}')!"
+            )
 
 
-    @property
-    def is_enrolled(self) -> bool:
-        """True, if student has been enrolled to the course."""
-        return True if self.has_enrolled == 'y' else False
-
-    @property
-    def has_submission(self) -> bool:
-        """True, if student has HUBREG submission."""
-        return True if self.has_submission else False
-
-    @property
-    def is_open(self):
-        """True unless registration-assignment deadline has been passed?"""
-        return True if self.deadline > datetime.date.today() else False
 
 
-    def submit(self, account_name: str):
+    def register_account(self, account_name: str):
         """Updates existing 'draft' state submission, or if one doesn't exist, inserts a new one."""
         # First try to update 'draft' submission, if no affected rows, then insert
         UPDATE = """
@@ -151,34 +127,33 @@ class GitHubAccountRegistration(dict):
             'account_name' : account_name
         }
         # {**self, **locals()}
-        with g.db.cursor() as c:
-            if not c.execute(UPDATE, args).rowcount:
-                if not c.execute(INSERT, args).rowcount:
-                    raise ValueError(
-                        """Failed to create GitHub account registration submission! course_id: {course_id}, assignment_id: {assignmen_id}, uid: {uid}""".format(self)
-                    )
-                else:
-                    g.db.commit()
-                    return "inserted something!"
-            else:
-                g.db.commit()
-                return "Updated ..something!"
-        return args
+        if not self.cursor.execute(UPDATE, args).rowcount:
+            if not self.cursor.execute(INSERT, args).rowcount:
+                raise Exception(
+                    """Failed to create GitHub account registration submission! course_id: {course_id}, assignment_id: {assignmen_id}, uid: {uid}""".format(self)
+                )
+        self.cursor.connection.commit()
 
 
 
 
+    @staticmethod
+    def register_repository(cursor, submission_id: int, repository: str) -> None:
+        cursor.execute(
+            "CALL core.register_github(%(submission_id)s, %(repository)s)",
+            locals()
+        )
+        #
+        # Send registration message
+        #
+        template    = Template(cursor, 'HUBREG')
+        data        = JTDSubmission(cursor, submission_id)
+        template.parse_and_queue(
+            data['course_id'],
+            data['enrollee_uid'],
+            **data
+        )
+        cursor.connection.commit()
 
-if __name__ == '__main__':
-
-    # MUST execute as local user 'schooner'
-    import psycopg
-    from flask import Flask
-    app = Flask(__name__)
-    with app.app_context():
-        if not hasattr(g, 'db'):
-            g.db = psycopg.connect("dbname=schooner user=schooner")
-        r = GitHubAccountRegistration('DTE20068-3002', 'lazy')
-        print(r)
 
 # EOF

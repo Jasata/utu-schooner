@@ -107,10 +107,6 @@
 #
 #
 
-from .Course                    import Course
-from .Enrollee                  import Enrollee
-from .GitHubAccountRegistration import GitHubAccountRegistration
-
 from .File          import File
 from .Upload        import Upload
 from .Flow          import Flow

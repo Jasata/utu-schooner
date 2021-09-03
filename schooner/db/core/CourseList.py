@@ -30,6 +30,18 @@ class CourseList(list):
                     )
                     """
                 )
+            elif k == 'ongoing':
+                where.append(
+                    """
+                    opens < CURRENT_TIMESTAMP
+                    AND
+                    (
+                        closes IS NULL
+                        OR
+                        closes > CURRENT_TIMESTAMP
+                    )
+                    """
+                )
             elif k == 'uid':
                 where.append(
                     """course_id IN (
@@ -43,6 +55,8 @@ class CourseList(list):
                 where.append(f" {k} = ANY(%({k})s) ")
         if where:
             self.SQL += f" WHERE {' AND '.join(where)}"
+        # Remove "dud" keys
+        kwargs.pop('ongoing', None)
         self.args = kwargs
         if cursor.execute(self.SQL, kwargs).rowcount:
             super().__init__(

@@ -1,6 +1,7 @@
 __all__ = [
-    "ExerciseArchive"
+    "ExerciseArchive",
+    "GitRegistration"
 ]
 
 from .ExerciseArchive       import ExerciseArchive
-
+from .GitRegistration       import GitRegistration
