@@ -354,7 +354,7 @@ if __name__ == '__main__':
                             clone = processer(f"python hubbot.py --clone {fetchstring}")
                             fetches.append(clone)
                         except Exception as e:
-                            fetches.append([-1, None, str(e)])
+                            fetches.append((-1, None, str(e)))
                             log.error(str(e))
         except Lockfile.AlreadyRunning as e:
             log.error("Execution cancelled! Lockfile found (another process still running).")

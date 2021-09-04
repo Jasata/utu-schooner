@@ -1,6 +1,9 @@
 __all__ = [
-    "AccessToken"
+    "AccessToken",
+    "Assistant",
+    "AssistantList"
 ]
 
 from .AccessToken       import AccessToken
-
+from .Assistant         import Assistant
+from .AssistantList     import AssistantList

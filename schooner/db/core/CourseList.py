@@ -64,8 +64,11 @@ class CourseList(list):
             )
 
 
-    def sort(self, key):
-        super().sort(key=lambda k : k[key])
+
+
+    def sort(self, key, desc: bool = False):
+        super().sort(key=lambda k : k[key], reverse = desc)
+
 
 
 

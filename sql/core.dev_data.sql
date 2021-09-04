@@ -250,6 +250,7 @@ VALUES
 
 
 -- For Dummies course
+\echo 'DTEK0000-* PAST, ONGOING and FUTURE courses'
 INSERT INTO core.course
 (
     course_id,
@@ -264,20 +265,103 @@ INSERT INTO core.course
 )
 VALUES
 (
+    'DTEK0000-3000',
+    'DTEK0000',
+    'PAST course (2019)',
+    NULL,
+    NULL,
+    '2019-10-25',
+    '2019-12-18',
+    '0-5/60',
+    'For Dummies. Made by a Dummy.'
+),
+(
+    'DTEK0000-3001',
+    'DTEK0000',
+    'PAST course (2020)',
+    NULL,
+    NULL,
+    '2020-10-25',
+    '2020-12-18',
+    '0-5/60',
+    'For Dummies. Made by a Dummy.'
+),
+(
     'DTEK0000-3002',
     'DTEK0000',
-    'For Dummies course',
+    'CURRENT course (2021)',
     NULL,
     NULL,
-    '2021-08-01',
-    '2022-10-01',
+    '2021-08-25',
+    '2021-12-18',
+    '0-5/60',
+    'For Dummies. Made by a Dummy.'
+),
+(
+    'DTEK0000-3003',
+    'DTEK0000',
+    'FUTURE course (2022)',
+    NULL,
+    NULL,
+    '2022-10-25',
+    '2022-12-18',
+    '0-5/60',
+    'For Dummies. Made by a Dummy.'
+),
+(
+    'DTEK0000-3004',
+    'DTEK0000',
+    'FUTURE course (2023)',
+    NULL,
+    NULL,
+    '2023-10-25',
+    '2023-12-18',
     '0-5/60',
     'For Dummies. Made by a Dummy.'
 );
 
-
+--
+-- Each of them shall have a basic set of assignments
+--
+\echo 'DTEK0000-* GitHub Account Registration Assignments'
 INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty
+)
 VALUES
+(
+    'T01',
+    'DTEK0000-3000',
+    'GitHub Account Registration',
+    'Student must register the GitHub account that will be used to submit the exercises in this course.',
+    'HUBREG',
+    1,
+    1,
+    NULL,
+    '2019-12-18',
+    NULL
+),
+(
+    'T01',
+    'DTEK0000-3001',
+    'GitHub Account Registration',
+    'Student must register the GitHub account that will be used to submit the exercises in this course.',
+    'HUBREG',
+    1,
+    1,
+    NULL,
+    '2020-12-18',
+    NULL
+),
 (
     'T01',
     'DTEK0000-3002',
@@ -287,90 +371,168 @@ VALUES
     1,
     1,
     NULL,
-    '2021-08-25',
-    NULL,
-    DEFAULT
+    '2021-12-18',
+    NULL
 ),
 (
-    'T02',
-    'DTEK0000-3002',
-    'First Lecture',
-    'Mandatory first lecture of the course.',
-    NULL,
+    'T01',
+    'DTEK0000-3003',
+    'GitHub Account Registration',
+    'Student must register the GitHub account that will be used to submit the exercises in this course.',
+    'HUBREG',
     1,
     1,
-    0,
-    '2021-08-03',
     NULL,
-    DEFAULT
+    '2021-12-18',
+    NULL
 ),
 (
-    'Q01',
-    'DTEK0000-3002',
-    'First weekly quiz',
-    'Visit ViLLE',
-    'APLUS',
-    40,
-    20,
-    2,
-    '2021-08-29',
+    'T01',
+    'DTEK0000-3004',
+    'GitHub Account Registration',
+    'Student must register the GitHub account that will be used to submit the exercises in this course.',
+    'HUBREG',
+    1,
+    1,
     NULL,
-    DEFAULT
-),
-(
-    'Q02',
-    'DTEK0000-3002',
-    'Second weekly quiz',
-    'Visit ViLLE',
-    'APLUS',
-    40,
-    20,
-    2,
-    '2021-09-05',
-    NULL,
-    DEFAULT
-),
-(
-    'E01',
-    'DTEK0000-3002',
-    'First exercise, mandatory',
-    'Write Hello World',
-    'HUBBOT',
-    40,
-    20,
-    2,
-    '2021-08-24',
-    NULL,
-    DEFAULT
-),
-(
-    'E02',
-    'DTEK0000-3002',
-    'Second exercise, optional',
-    'Write ROT13 encoder/decoder',
-    'HUBBOT',
-    60,
-    NULL,
-    2,
-    '2021-09-04',
-    NULL,
-    DEFAULT
-),
-(
-    'EXM',
-    'DTEK0000-3002',
-    'Exam',
-    'exam.utu.fi exam',
-    NULL,
-    220,
-    140,
-    2,
-    '2021-11-21',
-    NULL,
-    'best'
+    '2021-12-18',
+    NULL
 );
 
--- Poems course
+\echo 'DTEK0000-* Asset loans'
+INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty
+)
+VALUES
+('T02', 'DTEK0000-3000', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2019-09-20', NULL),
+('T02', 'DTEK0000-3001', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2020-09-20', NULL),
+('T02', 'DTEK0000-3002', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2021-09-20', NULL),
+('T02', 'DTEK0000-3003', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2022-09-20', NULL),
+('T02', 'DTEK0000-3004', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2023-09-20', NULL);
+
+
+\echo 'DTEK0000-* Weekly quizzes'
+INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty
+)
+VALUES
+('Q01', 'DTEK0000-3000', 'First weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2019-09-07', NULL),
+('Q01', 'DTEK0000-3001', 'First weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2020-09-07', NULL),
+('Q01', 'DTEK0000-3002', 'First weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2021-09-07', NULL),
+('Q01', 'DTEK0000-3003', 'First weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2022-09-07', NULL),
+('Q01', 'DTEK0000-3004', 'First weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2023-09-07', NULL);
+
+INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty
+)
+VALUES
+('Q02', 'DTEK0000-3000', 'Second weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2019-09-14', NULL),
+('Q02', 'DTEK0000-3001', 'Second weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2020-09-14', NULL),
+('Q02', 'DTEK0000-3002', 'Second weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2021-09-14', NULL),
+('Q02', 'DTEK0000-3003', 'Second weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2022-09-14', NULL),
+('Q02', 'DTEK0000-3004', 'Second weekly quiz', 'Visit ViLLE', 'APLUS', 40, 20, 2, '2023-09-14', NULL);
+
+
+\echo 'DTEK0000-* Weekly execises'
+INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty
+)
+VALUES
+('E01', 'DTEK0000-3000', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2019-09-07', NULL),
+('E01', 'DTEK0000-3001', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2020-09-07', NULL),
+('E01', 'DTEK0000-3002', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2021-09-07', NULL),
+('E01', 'DTEK0000-3003', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2022-09-07', NULL),
+('E01', 'DTEK0000-3004', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2023-09-07', NULL);
+
+
+INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty
+)
+VALUES
+('E02', 'DTEK0000-3000', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2019-09-14', NULL),
+('E02', 'DTEK0000-3001', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2020-09-14', NULL),
+('E02', 'DTEK0000-3002', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2021-09-14', NULL),
+('E02', 'DTEK0000-3003', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2022-09-14', NULL),
+('E02', 'DTEK0000-3004', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2023-09-14', NULL);
+
+
+\echo 'DTEK0000-* Exam'
+INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty
+)
+VALUES
+('EXM', 'DTEK0000-3000', 'Exam', 'exam.utu.fi exam', NULL, 220, 140, 2, '2019-12-31', NULL),
+('EXM', 'DTEK0000-3001', 'Exam', 'exam.utu.fi exam', NULL, 220, 140, 2, '2020-12-31', NULL),
+('EXM', 'DTEK0000-3002', 'Exam', 'exam.utu.fi exam', NULL, 220, 140, 2, '2021-12-31', NULL),
+('EXM', 'DTEK0000-3003', 'Exam', 'exam.utu.fi exam', NULL, 220, 140, 2, '2022-12-31', NULL),
+('EXM', 'DTEK0000-3004', 'Exam', 'exam.utu.fi exam', NULL, 220, 140, 2, '2023-12-31', NULL);
+
+
+
+
+
+
+\echo 'DTEK0002-3002 Poems course'
 INSERT INTO core.course
 (
     course_id,

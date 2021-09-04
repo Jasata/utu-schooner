@@ -1,0 +1,30 @@
+{% extends 'layout.jinja' %}
+{#
+    Assistant index view.
+
+    REQUIRES
+        title:          str
+        queue:          list schooner.api.AssistantWorkqueue
+        
+#}
+
+{% block content %}
+    {% if queue|length == 0 %}
+        <p>There does not appear to be any submissions left that need evaluating.</p>
+    {% else %}
+        <p>
+            <table>
+                <tr>
+                    <th>Assignment</th>
+                    <th>Deadline</th>
+                <tr>
+        {% for sub in queue %}
+                <tr>
+                    <td>{{ sub['assignment_id'] }}</td>
+                    <td>{{ sub['deadline'].strftime('%Y-%m-%d') }}</td>
+                </tr>
+        {% endfor %}
+            </table>
+        </p>
+    {% endif %}
+{% endblock %}

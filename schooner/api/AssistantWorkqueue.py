@@ -5,26 +5,27 @@
 # University of Turku / Faculty of Technilogy / Department of Computing
 # (c) 2021, Jani Tammi <jasata@utu.fi>
 #
-# SubmissionList.py - List of data dictionaries for core.submission
-#   2021-08-30  Initial version.
+# AssistantWorkqueue.py - Data object for assistant workqueue
+#   2021-09-04  Initial version.
+#
 #
 
 
-class SubmissionList(list):
+class AssistantWorkqueue(list):
 
-    def __init__(self, cursor, **kwargs):
+    def __init__(self, cursor, assistant_uid:str, **kwargs):
         self.SQL = """
             SELECT      *
-            FROM        core.submission
+            FROM        assistant.workqueue(%(assistant_uid)s)
         """
         where = []
         for k, v in kwargs.items():
-            if isinstance(v, list):
-                where.append(f" {k} = ANY(%({k})s) ")
-            else:
-                where.append(f" {k} = %({k})s ")
+            if not isinstance(v, list):
+                kwargs[k] = [v]
+            where.append(f" {k} = ANY(%({k})s) ")
         if where:
             self.SQL += f" WHERE {' AND '.join(where)}"
+        kwargs['assistant_uid'] = assistant_uid
         self.args = kwargs
         if cursor.execute(self.SQL, kwargs).rowcount:
             super().__init__(
@@ -36,7 +37,6 @@ class SubmissionList(list):
 
     def sort(self, key, desc: bool = False):
         super().sort(key=lambda k : k[key], reverse = desc)
-
 
 
 

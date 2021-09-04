@@ -649,4 +649,54 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO schooner_dev;
 
 
 
+\echo '=== assistant.workqueue()'
+CREATE OR REPLACE FUNCTION assistant.workqueue(
+    in_assistant_uid        VARCHAR
+)
+    RETURNS TABLE
+    (
+        submission_id       INTEGER,
+        course_id           VARCHAR,
+        assignment_id       VARCHAR,
+        uid                 VARCHAR,
+        deadline            DATE
+    )
+    LANGUAGE PLPGSQL
+    STRICT
+AS $$
+BEGIN
+    RETURN QUERY
+        SELECT      submission.submission_id,
+                    submission.course_id,
+                    submission.assignment_id,
+                    submission.uid,
+                    assignment.deadline
+        FROM        core.submission
+                    INNER JOIN core.assignment
+                    ON (
+                        submission.assignment_id = assignment.assignment_id 
+                        AND
+                        submission.course_id = assignment.course_id
+                        AND
+                        assignment.handler = 'HUBBOT'
+                    )
+                    INNER JOIN assistant.assistant
+                    ON (
+                        assistant.course_id = assignment.course_id
+                        AND
+                        assistant.assistant_uid = in_assistant_uid
+                    )
+        WHERE       submission.state = 'draft';
+    RETURN;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION assistant.workqueue TO "www-data";
+GRANT EXECUTE ON FUNCTION assistant.workqueue TO schooner_dev;
+
+COMMENT ON FUNCTION assistant.workqueue IS
+'Return a list of non-evaluated HUBBOT submissions for all courses that the assistant is signed for.';
+
+
+
+
 -- EOF

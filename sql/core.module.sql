@@ -951,4 +951,52 @@ GRANT EXECUTE ON PROCEDURE core.asset_return TO "www-data";
 GRANT EXECUTE ON PROCEDURE core.asset_return TO schooner_dev;
 
 
+
+
+\echo '=== core.course_purge()'
+CREATE OR REPLACE PROCEDURE
+core.course_purge(
+    in_course_id        VARCHAR
+)
+    LANGUAGE PLPGSQL
+    SECURITY INVOKER
+AS $$
+-- Normally, a course -table record cannot be deleted when enrollee
+-- table has referencing records (so that a course is not accidentally
+-- deleted along with student course data).
+-- This procedure will clean up all data related to the designated
+-- course.
+DECLARE
+    r_enrollee      RECORD;
+BEGIN
+    -- Delete submissions
+    FOR r_enrollee IN
+        SELECT      uid
+        FROM        core.enrollee
+        WHERE       course_id = in_course_id
+    LOOP
+        DELETE
+        FROM        core.submission
+        WHERE       course_id = in_course_id
+                    AND
+                    uid = r_enrollee.uid;
+    END LOOP;
+    -- Delete enrollees
+    DELETE
+    FROM            core.enrollee
+    WHERE           course_id = in_course_id;
+    -- Delete assignment
+    DELETE
+    FROM            core.assignment
+    WHERE           course_id = in_course_id;
+    -- Delete course
+    DELETE
+    FROM            core.course
+    WHERE           course_id = in_course_id;
+END;
+$$;
+-- Grant noone any privileges - this must be executed as database owner.
+
+
+
 -- EOF

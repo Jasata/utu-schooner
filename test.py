@@ -226,71 +226,22 @@ class SQLiteScript(File):
 
 
 
-class CourseList(list):
-
-    def __init__(self, cursor, **kwargs):
-        self.SQL = """
-            SELECT      *
-            FROM        core.course
-        """
-        where = []
-        for k, v in kwargs.items():
-            if k == 'handler':
-                if isinstance(v, str):
-                    kwargs[k] = [v]
-                where.append(
-                    """course_id IN (
-                        SELECT      distinct course_id
-                        FROM        core.assignment
-                        WHERE       handler = ANY(%(handler)s)
-                    )
-                    """
-                )
-            # elif isinstance(v, str):
-            #     where.append(f" {k} = %({k})s ")
-            # elif isinstance(v, list):
-            else:
-                if not isinstance(v, list):
-                    kwargs[k] = [v]
-                where.append(f" {k} = ANY(%({k})s) ")
-            #else:
-            #    raise ValueError(f"Cannot handle datatype of argument '{k}'")
-        if where:
-            self.SQL += f" WHERE {' AND '.join(where)}"
-        self.args = kwargs
-        if cursor.execute(self.SQL, kwargs).rowcount:
-            super().__init__(
-                [dict(zip([k[0] for k in cursor.description], row)) for row in cursor]
-            )
-
-
     def sort(self, key):
         super().sort(key=lambda k : k[key])
 
 
 
-
-#from schooner.db.core   import CourseList
 from schooner.db.core   import EnrolleeList
 from schooner.db.core   import AssignmentList
-from schooner.db.system import LogList
 from schooner.db.core   import CourseList
-
-from schooner.db.assistant  import AccessToken
 
 import datetime
 
-class demo(dict):
-    __getattr__ = dict.__getitem__
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
 if __name__ == '__main__':
 
     with psycopg.connect(f"dbname=schooner").cursor() as cursor:
-
+        """
         course_list = CourseList(
             cursor,
 #            handlers = ['HUBBOT', 'HUBREG', 'BOGUS'],
@@ -322,33 +273,37 @@ if __name__ == '__main__':
         cl = CourseList(cursor, uid = 'jasata')
         for c in cl:
             print(c['code'], c['name'])
-
-
-        # Enrollee.notifications test
-        from schooner.db.core import Enrollee
         """
-        e = Enrollee(cursor, 'DTEK0068-3002', 'jasata')
-        print(str(e))
-        #os._exit(0)
-        e['email'] = 'jatuhat@utu.fi'
-        print(e.pk)
-        print(e)
-        e.db_update()
-        #cursor.connection.commit()
-        """
-        try:
-            f = Enrollee(cursor, "course")
-        except Exception as e:
-            print(str(e))
-        g = Enrollee(cursor)
-        h = Enrollee(cursor, 'DTEK0068-3002', 'jasata')
 
-        from schooner.db.core   import Course
-        c = Course(cursor, 'DTEK0068-3002')
-        for k, v in c.items():
-            print(k, "=", v)
-        c['email'] = 'dte20068@utu.fi'
-        c.db_update()
+        from schooner.db.assistant import Assistant
+        from schooner.db.assistant import AssistantList
+
+        print("=== Assistants for course DTEK0068-3002")
+        al = AssistantList(cursor, course_id = 'DTEK0068-3002')
+        al.sort('assistant_uid', desc=True)
+        for a in al:
+            for k, v in a.items():
+                print(k, "=", v)
+        print("and again.....")
+        al.sort('assistant_uid', desc=False)
+        for a in al:
+            for k, v in a.items():
+                print(k, "=", v)
+
+        """
+        print("=== Courses for assistant jasata")
+        cl = AssistantList(cursor, assistant_uid = 'jasata')
+        for c in cl:
+            for k, v in c.items():
+                print(k, "=", v)
+
+        from schooner.api       import AssistantWorkqueue
+        q = AssistantWorkqueue(cursor, 'jasata', course_id = 'DTEK0068-3002')
+        for s in q:
+            for k, v in s.items():
+                print(k, "=", v)
+        """
+
     """
     # Why does this print root keys twice?
     from schooner.util import AppConfig
@@ -365,6 +320,7 @@ if __name__ == '__main__':
     for k in allCfg.keys():
         print("KEY", k)
     """
+
 
 
 # EOF

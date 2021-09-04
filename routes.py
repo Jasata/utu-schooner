@@ -23,6 +23,7 @@
 #   Most of actual work is implemented in the API modules.
 #
 import os
+from schooner.db import assistant
 import sys
 import time
 import json
@@ -714,6 +715,67 @@ def notifications_post():
             message = str(e)
         )
 
+
+###############################################################################
+#
+# COURSE ASSISTANT
+#
+#
+@app.route("/assistant.html", methods=['GET'])
+def assistant_get():
+    """Basic assistant page. TBA."""
+    from schooner.db.assistant import Assistant, AssistantList
+    try:
+        if not sso.is_authenticated:
+            raise Exception("Must be authenticated to access this view")
+        if not Assistant.is_assistant(g.db.cursor(), sso.uid):
+            raise Exception("You are not registed as an assistant!")
+        return flask.render_template(
+            'assistant_index.jinja',
+            title = "Assistant Information",
+            assistant_name = Assistant.get_name(g.db.cursor(), sso.uid),
+            courselist = AssistantList(g.db.cursor(), assistant_uid = sso.uid)
+        )
+    except Exception as e:
+        app.logger.exception(str(e))
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Internal Error",
+            message = str(e)
+        )
+
+
+
+@app.route("/assistant_workqueue.html", methods=['GET'])
+def assistant_workqueue_get():
+    from schooner.db.assistant  import Assistant
+    from schooner.api           import AssistantWorkqueue
+    try:
+        if not sso.is_authenticated:
+            raise Exception("Must be authenticated to access this view")
+        data = request.args.to_dict(flat = True)
+        if 'cid' not in data:
+            raise ValueError("Request query parameter 'cid' not found!")
+        if not Assistant.in_course(g.db.cursor(), data['cid'], sso.uid):
+            raise ValueError(
+                f"You are not registed as an assistant to course '{data['cid']}'!"
+            )
+        return flask.render_template(
+            'assistant_workqueue.jinja',
+            title = "Assistant Workqueue",
+            queue = AssistantWorkqueue(
+                g.db.cursor(),
+                sso.uid,
+                course_id = data['cid']
+            )
+        )
+    except Exception as e:
+        app.logger.exception(str(e))
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Internal Error",
+            message = str(e)
+        )
 
 
 @app.route("/exercise", methods=['GET'])
