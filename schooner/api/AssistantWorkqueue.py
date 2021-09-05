@@ -13,10 +13,10 @@
 
 class AssistantWorkqueue(list):
 
-    def __init__(self, cursor, assistant_uid:str, **kwargs):
+    def __init__(self, cursor, uid:str, **kwargs):
         self.SQL = """
             SELECT      *
-            FROM        assistant.workqueue(%(assistant_uid)s)
+            FROM        assistant.workqueue(%(uid)s)
         """
         where = []
         for k, v in kwargs.items():
@@ -25,7 +25,7 @@ class AssistantWorkqueue(list):
             where.append(f" {k} = ANY(%({k})s) ")
         if where:
             self.SQL += f" WHERE {' AND '.join(where)}"
-        kwargs['assistant_uid'] = assistant_uid
+        kwargs['uid'] = uid
         self.args = kwargs
         if cursor.execute(self.SQL, kwargs).rowcount:
             super().__init__(
@@ -37,6 +37,7 @@ class AssistantWorkqueue(list):
 
     def sort(self, key, desc: bool = False):
         super().sort(key=lambda k : k[key], reverse = desc)
+        return self
 
 
 

@@ -3,7 +3,6 @@ __all__ = [
     "Enrollee",
     "Assignment",
     "Submission",
-    "PendingGitHubRegistrations",
     "HandlerList",
     "CourseList",
     "EnrolleeList",
@@ -23,6 +22,4 @@ from .HandlerList       import HandlerList
 from .SubmissionList    import SubmissionList
 from .AssignmentList    import AssignmentList
 
-# Result set dictionaries
-from .PendingGitHubRegistrations    import PendingGitHubRegistrations
 

@@ -290,9 +290,15 @@ if __name__ == '__main__':
             for k, v in a.items():
                 print(k, "=", v)
 
+        a = Assistant(cursor, 'DTEK0000-3002', 'jasata')
+        if a.currently_evaluating():
+            print("Currently evaluating")
+        else:
+            print("Currently slacking off")
+
         """
         print("=== Courses for assistant jasata")
-        cl = AssistantList(cursor, assistant_uid = 'jasata')
+        cl = AssistantList(cursor, uid = 'jasata')
         for c in cl:
             for k, v in c.items():
                 print(k, "=", v)

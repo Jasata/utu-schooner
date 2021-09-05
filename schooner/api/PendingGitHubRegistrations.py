@@ -57,6 +57,8 @@ class PendingGitHubRegistrations(list):
 
     @staticmethod
     def register(cursor, submission_id: int, repository: str) -> None:
+        """TODO: Remove this function."""
+        raise Exception("USE schooner.api.GitRegistration.register_repository() INSTEAD!")
         cursor.execute(
             "CALL core.register_github(%(submission_id)s, %(repository)s)",
             locals()

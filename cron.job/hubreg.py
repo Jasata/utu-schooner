@@ -8,6 +8,8 @@
 # hubreg.py - GitHub registration and collaborator invitation handler
 #   2021-08-23  Initial version.
 #   2021-08-30  (JTa) Now uses schooner package.
+#   2021-09-05  (JTa) Chanced Git registration call from PendingGitHubRegistrations
+#               into GitRegistration.register_repository()
 #
 # 
 # PROCESS 
@@ -20,7 +22,8 @@
 #       Page creates submission in 'draft' state (content = account name). 
 #   5)  Background task 'hubreg.py' runs every minute and looks for 'draft' 
 #       submissions for 'handler' = 'HUBREG' (and for which the assignment 
-#       deadline has not passed). Content  
+#       deadline has not passed). Content will have the student's GitHub
+#       account name, as mentioned above.
 #       Once found, it looks for a pending invitation from recorded GitHub 
 #       account name. If found, accepts invite, updates enrollee.github and 
 #       sets submission.state = 'accepted'. 
@@ -67,89 +70,12 @@ sys.path.insert(
 from schooner.util      import AppConfig
 from schooner.util      import Lockfile
 from schooner.util      import LogDBHandler
-from schooner.db.core   import PendingGitHubRegistrations
+from schooner.api       import GitRegistration
+from schooner.api       import PendingGitHubRegistrations
  
 SCRIPTNAME  = os.path.basename(__file__) 
 CONFIG_FILE = "app.conf"
 
-
-class Database():
-    """Each operation opens and closes the database for maximum concurrency support."""
-    def __init__(self, cstring: str):
-        self.cstring = cstring
-    
-    # Converted into schooner.core.PendingGitHubRegistrations
-    # def get_pending_github_info(self):
-    #     sql = """
-    #     SELECT      submission.submission_id,
-    #                 assignment.course_id,
-    #                 assignment.code,
-    #                 submission.uid,
-    #                 submission.content
-    #     FROM        core.submission
-    #                 INNER JOIN 
-    #                 (
-    #                         SELECT      assignment.course_id,
-    #                                     course.code
-    #                         FROM        core.course
-    #                         INNER JOIN  core.assignment
-    #                         ON          assignment.course_id = course.course_id
-    #                         WHERE       handler = 'HUBREG'
-    #                         AND         deadline > NOW()
-    #                 ) assignment
-    #                 ON submission.course_id = assignment.course_id
-    #     WHERE       state = 'draft'
-    #     """
-    #     with psycopg.connect(self.cstring) as conn:
-    #         with conn.cursor() as cur:
-    #             cur.execute(
-    #                 sql
-    #             )
-    #         return [dict(zip([key[0] for key in cur.description], row)) for row in cur]
-        
-    # def set_enrollee_account(self, submission:dict):
-    #     sql = """
-    #     CALL core.register_github(%(submission_id)s, %(github_repository)s)
-    #     """
-
-    #     with psycopg.connect(self.cstring) as conn:
-    #         with conn.cursor() as cur:
-    #             cur.execute(sql, submission)
-
-    # def create_registration_mail(self, submission:dict):
-    #     enrollee = {}
-    #     course = {}
-
-    #     enrollee_sql = """
-    #     SELECT  *
-    #     FROM    core.enrollee
-    #     WHERE   uid = %(uid)s
-    #     """
-    #     course_sql = """
-    #     SELECT  *
-    #     FROM    core.course
-    #     WHERE   course_id = %(course_id)s
-    #     """
-
-    #     with psycopg.connect(self.cstring) as conn:
-    #         with conn.cursor() as cur:
-    #             cur.execute(
-    #                 enrollee_sql, (submission)
-    #             )
-    #             enrollee = dict(zip([key[0] for key in cur.description], cur.fetchone()))
-    #             cur.execute(
-    #                 course_sql, (submission)
-    #             )
-    #             course = dict(zip([key[0] for key in cur.description], cur.fetchone()))
-    #             if enrollee['notifications'] == 'enabled':
-    #                 with conn.cursor() as cur: 
-    #                     mail = Template(cur, 'HUBREG')
-    #                     mail.parse_and_send(
-    #                         cur, 
-    #                         submission['course_id'],
-    #                         submission['uid'],
-    #                         {'enrollee' : enrollee, 'course' : course }
-    #                         )
 
 if __name__ == '__main__': 
  
@@ -218,7 +144,7 @@ if __name__ == '__main__':
                             # Check that the repository is now accessible
                             if requests.get(repo_url, headers=headers).status_code == 200:
                                 # Register AND send notification
-                                pendingregs.register(
+                                GitRegistration.register_repository(
                                     cursor,
                                     reg['submission_id'],
                                     reg['student_repository']

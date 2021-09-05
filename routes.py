@@ -346,7 +346,7 @@ def material_return_post():
     try:
         # Require authenticated session
         if not sso.is_admin:
-            raise ValueError(
+            raise Exception(
                 f"Session must be authenticated to an admin account!"
             )
         # process FORM data
@@ -734,7 +734,7 @@ def assistant_get():
             'assistant_index.jinja',
             title = "Assistant Information",
             assistant_name = Assistant.get_name(g.db.cursor(), sso.uid),
-            courselist = AssistantList(g.db.cursor(), assistant_uid = sso.uid)
+            courselist = AssistantList(g.db.cursor(), uid = sso.uid)
         )
     except Exception as e:
         app.logger.exception(str(e))
@@ -767,7 +767,7 @@ def assistant_workqueue_get():
                 g.db.cursor(),
                 sso.uid,
                 course_id = data['cid']
-            )
+            ).sort('submitted')
         )
     except Exception as e:
         app.logger.exception(str(e))
@@ -778,8 +778,53 @@ def assistant_workqueue_get():
         )
 
 
+
+
+@app.route('/assistant_start_evaluation.html', methods=['GET'])
+def assistant_start_evaluation_get():
+    from schooner.db.core       import Submission
+    from schooner.db.assistant  import Assistant
+    try:
+        if not sso.is_authenticated:
+            raise Exception("Must be authenticated to access this view")
+        data = request.args.to_dict(flat = True)
+        # Submission_id ('sid') must be provided
+        if 'sid' not in data:
+            raise ValueError("Request query parameter 'sid' not found!")
+        sub = Submission(g.db.cursor(), data['sid'])
+        if not Assistant.in_course(g.db.cursor(), sub['course_id'], sso.uid):
+            raise ValueError(
+                f"You are not registed as an assistant to course '{sub['course_id']}'!"
+            )
+        ass = Assistant(g.db.cursor(), sub['course_id'], sso.uid)
+        if (sid := ass.currently_evaluating()):
+            raise Exception(
+                f"Already evaluating submission #{sid}. Complete that before starting another."
+            )
+        #
+        # Preliminaries done
+        #
+        #TODO: assistant.evaluation_start()
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "View not complete!",
+            message = "This view has not yet been completely implemented"
+        )
+    except Exception as e:
+        app.logger.exception(str(e))
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Internal Error",
+            message = str(e)
+        )
+
+
+
+
+
 @app.route("/exercise", methods=['GET'])
 def exercise_get():
+    """Download exercise archive with a time-limited access token."""
     from schooner.api           import ExerciseArchive
     from schooner.db.assistant  import AccessToken
     # Until there is a way to transger SSO cookie from assistant's browser

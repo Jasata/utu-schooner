@@ -11,7 +11,7 @@
 INSERT INTO assistant.assistant
 (
     course_id,
-    assistant_uid,
+    uid,
     name
 )
 VALUES

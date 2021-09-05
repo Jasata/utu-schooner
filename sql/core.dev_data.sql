@@ -591,6 +591,7 @@ VALUES
 --
 -- Enrollments
 --
+\echo 'Enrolling developers (''jasata'',''tumipo'', ''_none_'')'
 INSERT INTO core.enrollee
 (
     course_id,
@@ -601,38 +602,32 @@ INSERT INTO core.enrollee
     firstname
 )
 VALUES
+('DTEK0000-3000', 'tumipo', 506523, 'tumipo@utu.fi', 'Polvinen', 'Tuisku'),
+('DTEK0000-3001', 'tumipo', 506523, 'tumipo@utu.fi', 'Polvinen', 'Tuisku'),
+('DTEK0000-3002', 'tumipo', 506523, 'tumipo@utu.fi', 'Polvinen', 'Tuisku'),
+('DTEK0000-3003', 'tumipo', 506523, 'tumipo@utu.fi', 'Polvinen', 'Tuisku'),
+('DTEK0000-3000', 'jasata', 52493,  'jasata@utu.fi', 'Tammi',    'Jani'),
+('DTEK0000-3001', 'jasata', 52493,  'jasata@utu.fi', 'Tammi',    'Jani'),
+('DTEK0000-3002', 'jasata', 52493,  'jasata@utu.fi', 'Tammi',    'Jani'),
+('DTEK0000-3003', 'jasata', 52493,  'jasata@utu.fi', 'Tammi',    'Jani'),
+('DTEK0000-3004', 'jasata', 52493,  'jasata@utu.fi', 'Tammi',    'Jani'),
+('DTEK0000-3001', '_none_', 123456, '_none_@null',   'Noneof',   'Yourbusiness'),
+('DTEK0000-3002', '_none_', 123456, '_none_@null',   'Noneof',   'Yourbusiness');
+
+
+INSERT INTO core.enrollee
 (
-    'DTEK0000-3002',
-    'tumipo',
-    506523,
-    'tumipo@utu.fi',
-    'Polvinen',
-    'Tuisku'
-),
-(
-    'DTEK0002-3002',
-    'tumipo',
-    506523,
-    'tumipo@utu.fi',
-    'Polvinen',
-    'Tuisku'
-),
-(
-    'DTEK0000-3002',
-    'jasata',
-    52493,
-    'jasata@utu.fi',
-    'Tammi',
-    'Jani'
-),
-(
-    'DTEK0002-3002',
-    'jasata',
-    52493,
-    'jasata@utu.fi',
-    'Tammi',
-    'Jani'
-);
+    course_id,
+    uid,
+    studentid,
+    email,
+    lastname,
+    firstname
+)
+VALUES
+('DTEK0002-3002', 'tumipo', 506523, 'tumipo@utu.fi', 'Polvinen', 'Tuisku'),
+('DTEK0002-3002', 'jasata', 52493,  'jasata@utu.fi', 'Tammi',    'Jani'),
+('DTEK0002-3002', '_none_', 123456, '_none_@null',   'Noneof',   'Yourbusiness');
 
 
 
@@ -650,41 +645,24 @@ INSERT INTO core.submission
     score
 )
 VALUES
+('T01', 'DTEK0000-3002', 'jasata', 'Zorro',   'draft',    NULL,       NULL),
+('T02', 'DTEK0000-3002', 'jasata', '#001',    'draft',    NULL,       NULL),
+('T02', 'DTEK0000-3002', 'tumipo', '#002',    'draft',    NULL,       NULL);
+
+
+INSERT INTO core.submission
 (
-    'T01',
-    'DTEK0000-3002',
-    'jasata',
-    'Zorro',
-    'draft',
-    NULL,
-    NULL
-),
-(
-    'T02',
-    'DTEK0000-3002',
-    'jasata',
-    'KIT:001',
-    'accepted',
-    'www-data',
-    1
-),
-(
-    'T02',
-    'DTEK0000-3002',
-    'tumipo',
-    'KIT:002',
-    'accepted',
-    'www-data',
-    1
-),
-(
-    'Q02',
-    'DTEK0000-3002',
-    'tumipo',
-    'retrieved-from-aplus',
-    'accepted',
-    'www-data',
-    33
-);
+    assignment_id,
+    course_id,
+    uid,
+    content,
+    state,
+    evaluator,
+    score
+)
+VALUES
+('E01', 'DTEK0000-3002', 'jasata', 'WHAT GOES HERE',   'draft',    NULL,       NULL),
+('E02', 'DTEK0000-3002', 'jasata', 'I did a thing',    'draft',    NULL,       NULL),
+('E02', 'DTEK0000-3002', 'tumipo', 'Cake',             'draft',    NULL,       NULL);
 
 -- EOF

@@ -19,17 +19,15 @@ GRANT USAGE ON SCHEMA assistant TO schooner_dev;
 CREATE TABLE assistant.assistant
 (
     course_id           VARCHAR(32)     NOT NULL,
-    assistant_uid       VARCHAR(10)     NOT NULL,
+    uid                 VARCHAR(10)     NOT NULL,
     name                VARCHAR(64)     NOT NULL,
     created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status              active_t        NOT NULL DEFAULT 'active',
-    PRIMARY KEY (course_id, assistant_uid),
+    PRIMARY KEY (course_id, uid),
     FOREIGN KEY (course_id)
         REFERENCES core.course (course_id)
         ON UPDATE CASCADE
-        ON DELETE CASCADE,
-    CONSTRAINT assistant_course_unq
-        UNIQUE (course_id, assistant_uid)
+        ON DELETE CASCADE
 );
 GRANT ALL PRIVILEGES ON assistant.assistant TO schooner_dev;
 GRANT SELECT ON assistant.assistant TO "www-data";
@@ -57,15 +55,15 @@ CREATE TABLE assistant.evaluation
 (
     submission_id       INT             NOT NULL PRIMARY KEY,
     course_id           VARCHAR(32)     NOT NULL,
-    assistant_uid       VARCHAR(10)     NOT NULL,
+    uid                 VARCHAR(10)     NOT NULL,
     started             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ended               TIMESTAMP       NULL,
     FOREIGN KEY (submission_id)
         REFERENCES core.submission (submission_id)
         ON UPDATE CASCADE
         ON DELETE CASCADE,
-    FOREIGN KEY (course_id, assistant_uid)
-        REFERENCES assistant.assistant (course_id, assistant_uid)
+    FOREIGN KEY (course_id, uid)
+        REFERENCES assistant.assistant (course_id, uid)
         ON UPDATE CASCADE
         ON DELETE CASCADE,
     CONSTRAINT evaluation_ended_chk
@@ -80,7 +78,7 @@ GRANT SELECT ON assistant.evaluation TO "www-data";
 
 COMMENT ON TABLE assistant.evaluation IS
 'This table is inserted with a row when the evaluation of a submission begins, and it is updated with the .ended once the evaluation is complete. For work queue management, not having a row in this table means that the submission is available for evaluation, having a row without .ended value means that evaluation is in progress and having .ended value means that the submission has been evaluated.';
-COMMENT ON COLUMN assistant.evaluation.assistant_uid IS
+COMMENT ON COLUMN assistant.evaluation.uid IS
 'User ID of the assistant.';
 
 
@@ -159,7 +157,7 @@ Source: https://wiki.postgresql.org/wiki/Pseudo_encrypt';
 \echo '=== assistant.evaluation_begin()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_begin(
-    in_assistant_uid    VARCHAR(10),
+    in_uid              VARCHAR(10),
     in_submission_id    INTEGER
 )
     RETURNS INTEGER
@@ -232,18 +230,18 @@ BEGIN
     -- Assistant must be working for the same course as the submission is for
     SELECT      *
     FROM        assistant.assistant
-    WHERE       assistant_uid = in_assistant_uid
+    WHERE       uid = in_uid
                 AND
                 course_id = r_submission.course_id
     INTO        r_assistant;
     IF NOT FOUND THEN
         RAISE EXCEPTION
             'Assistant (''%'') is not registered for course (''%'')!',
-            in_assistant_uid, r_submission.course_id
+            in_uid, r_submission.course_id
             USING HINT = 'ASSISTANT_NOT_REGISTERED';
     ELSIF r_assistant.status != 'active' THEN
         RAISE EXCEPTION
-            'Assistant (''%'') is not active!', in_assistant_uid
+            'Assistant (''%'') is not active!', in_uid
             USING HINT = 'ASSISTANT_NOT_ACTIVE';
     END IF;
 
@@ -258,13 +256,13 @@ BEGIN
         (
             submission_id,
             course_id,
-            assistant_uid
+            uid
         )
         VALUES
         (
             in_submission_id,
             r_submission.course_id,
-            in_assistant_uid
+            in_uid
         );
     ELSE
         IF r_evaluation.ended IS NOT NULL THEN
@@ -272,10 +270,10 @@ BEGIN
             'Evaluation for submission (%) is already completed!',
             in_submission_id
             USING HINT = 'EVALUATION_COMPLETED';
-        ELSIF r_evaluation.assistant_uid != in_assistant_uid THEN
+        ELSIF r_evaluation.uid != in_uid THEN
             RAISE EXCEPTION
             'Evaluation for submission (%) belongs to another assistant (''%'')',
-            in_submission_id, r_evaluation.assistant_uid
+            in_submission_id, r_evaluation.uid
             USING HINT = 'EVALUATION_OWNER';
         END IF;
         -- Update assistant.evaluation.started
@@ -314,7 +312,7 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_begin TO schooner_dev;
 \echo '=== assistant.evaluation_close()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_close(
-    in_assistant_uid    VARCHAR(10),
+    in_uid              VARCHAR(10),
     in_submission_id    INTEGER,
     in_score            INTEGER,
     in_feedback         TEXT,
@@ -366,18 +364,18 @@ BEGIN
     -- Assistant must be working for the same course as the submission is for
     SELECT      *
     FROM        assistant.assistant
-    WHERE       assistant_uid = in_assistant_uid
+    WHERE       uid = in_uid
                 AND
                 course_id = r_submission.course_id
     INTO        r_assistant;
     IF NOT FOUND THEN
         RAISE EXCEPTION
             'Assistant (''%'') is not registered for course (''%'')!',
-            in_assistant_uid, r_submission.course_id
+            in_uid, r_submission.course_id
             USING HINT = 'ASSISTANT_NOT_REGISTERED';
     ELSIF r_assistant.status != 'active' THEN
         RAISE EXCEPTION
-            'Assistant (''%'') is not active!', in_assistant_uid
+            'Assistant (''%'') is not active!', in_uid
             USING HINT = 'ASSISTANT_NOT_ACTIVE';
     END IF;
 
@@ -397,10 +395,10 @@ BEGIN
         'Evaluation for submission (%) is already completed!',
         in_submission_id
         USING HINT = 'EVALUATION_COMPLETED';
-    ELSIF r_evaluation.assistant_uid != in_assistant_uid THEN
+    ELSIF r_evaluation.uid != in_uid THEN
         RAISE EXCEPTION
         'Evaluation for submission (%) belongs to another assistant (''%'')',
-        in_submission_id, r_evaluation.assistant_uid
+        in_submission_id, r_evaluation.uid
         USING HINT = 'EVALUATION_OWNER';
     END IF;
 
@@ -428,7 +426,7 @@ BEGIN
     --
     UPDATE  core.submission
     SET     state           = 'accepted',
-            evaluator       = in_assistant_uid,
+            evaluator       = in_uid,
             score           = in_score,
             feedback        = in_feedback,
             confidential    = in_confidential
@@ -469,7 +467,7 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_close TO schooner_dev;
 \echo '=== assistant.evaluation_reject()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_reject(
-    in_assistant_uid    VARCHAR(10),
+    in_uid              VARCHAR(10),
     in_submission_id    INTEGER,
     in_feedback         TEXT,
     in_confidential     TEXT
@@ -501,7 +499,7 @@ BEGIN
     -- LOCK evaluation table
 --    PERFORM     *
 --    FROM        assistant.evaluation
---    WHERE       assistant_uid = in_assistant_uid
+--    WHERE       uid = in_uid
 --    FOR UPDATE;
 --    IF NOT FOUND THEN
 --        RAISE EXCEPTION
@@ -545,28 +543,28 @@ BEGIN
         'Evaluation for submission (%) is already completed!',
         in_submission_id
         USING HINT = 'EVALUATION_COMPLETED';
-    ELSIF r_evaluation.assistant_uid != in_assistant_uid THEN
+    ELSIF r_evaluation.uid != in_uid THEN
         RAISE EXCEPTION
         'Evaluation for submission (%) belongs to another assistant (''%'')',
-        in_submission_id, r_evaluation.assistant_uid
+        in_submission_id, r_evaluation.uid
         USING HINT = 'EVALUATION_OWNER';
     END IF;
 
     -- Assistant must be working for the same course as the submission is for
     SELECT      *
     FROM        assistant.assistant
-    WHERE       assistant_uid = in_assistant_uid
+    WHERE       uid = in_uid
                 AND
                 course_id = r_submission.course_id
     INTO        r_assistant;
     IF NOT FOUND THEN
         RAISE EXCEPTION
             'Assistant (''%'') is not registered for course (''%'')!',
-            in_assistant_uid, r_submission.course_id
+            in_uid, r_submission.course_id
             USING HINT = 'ASSISTANT_NOT_REGISTERED';
     ELSIF r_assistant.status != 'active' THEN
         RAISE EXCEPTION
-            'Assistant (''%'') is not active!', in_assistant_uid
+            'Assistant (''%'') is not active!', in_uid
             USING HINT = 'ASSISTANT_NOT_ACTIVE';
     END IF;
 
@@ -575,7 +573,7 @@ BEGIN
     --
     UPDATE  core.submission
     SET     state           = 'rejected',
-            evaluator       = in_assistant_uid,
+            evaluator       = in_uid,
             score           = 0,
             feedback        = in_feedback,
             confidential    = in_confidential
@@ -651,26 +649,42 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO schooner_dev;
 
 \echo '=== assistant.workqueue()'
 CREATE OR REPLACE FUNCTION assistant.workqueue(
-    in_assistant_uid        VARCHAR
+    in_uid                  VARCHAR
 )
     RETURNS TABLE
     (
         submission_id       INTEGER,
+        lastname            VARCHAR,
+        firstname           VARCHAR,
         course_id           VARCHAR,
         assignment_id       VARCHAR,
-        uid                 VARCHAR,
-        deadline            DATE
+        assignment_name     VARCHAR,
+        student_uid         VARCHAR,
+        submitted           TIMESTAMP,
+        deadline            DATE,
+        evaluator_uid       VARCHAR,
+        evaluator_name      VARCHAR,
+        evaluation_started  TIMESTAMP
     )
     LANGUAGE PLPGSQL
     STRICT
 AS $$
+-- Returns all unevaluated HUBBOT assignment submissions for course(s) in which
+-- the given assistant uid is registered as an active assistant.
 BEGIN
     RETURN QUERY
         SELECT      submission.submission_id,
+                    enrollee.lastname,
+                    enrollee.firstname,
                     submission.course_id,
                     submission.assignment_id,
+                    assignment.name AS assignment_name,
                     submission.uid,
-                    assignment.deadline
+                    submission.submitted,
+                    assignment.deadline,
+                    evaluation.uid AS evaluator_uid,
+                    assistant.name AS evaluator_name,
+                    evaluation.started AS evaluation_started
         FROM        core.submission
                     INNER JOIN core.assignment
                     ON (
@@ -684,7 +698,17 @@ BEGIN
                     ON (
                         assistant.course_id = assignment.course_id
                         AND
-                        assistant.assistant_uid = in_assistant_uid
+                        assistant.uid = in_uid
+                        AND
+                        assistant.status = 'active'
+                    )
+                    LEFT OUTER JOIN assistant.evaluation
+                    ON (submission.submission_id = evaluation.submission_id)
+                    INNER JOIN core.enrollee
+                    ON (
+                        submission.course_id = enrollee.course_id
+                        AND
+                        submission.uid = enrollee.uid
                     )
         WHERE       submission.state = 'draft';
     RETURN;

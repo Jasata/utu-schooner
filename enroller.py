@@ -13,6 +13,7 @@
 #   2021-08-20  With the creation of system-shared schooner package,
 #               moved back to the project root.
 #   2021-08-31  Supports CSV column mapping to process different exports.
+#   2021-09-05  Minor fix for calling JTDTemplate.parse_and_queue().
 #
 #   IMPORTANT
 # -----------------------------------------------------------------------------
@@ -111,7 +112,7 @@ config = DefaultDotDict(
 
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
-__version__     = "0.4.0 (2021-08-31)"
+__version__     = "0.4.1 (2021-09-05)"
 __authors__     = "Jani Tammi <jasata@utu.fi>"
 VERSION         = __version__
 HEADER          = f"""
@@ -444,7 +445,7 @@ if __name__ == '__main__':
                             jt_msg.parse_and_queue(
                                 args.course_id,
                                 row[4],
-                                jt_data
+                                **jt_data
                             )
                         except Template.NotSent as e:
                             log.warning(str(e))

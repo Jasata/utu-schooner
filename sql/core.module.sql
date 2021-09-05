@@ -238,7 +238,7 @@ INSERT INTO core.handler
 VALUES
 ('HUBREG',   'GitHub account registrations', 'Match registered Git accounts with pending collaborator invitations to complete the registration.'),
 ('HUBBOT',   'GitHub exercise retriever', 'Retrieve assignment submissions from Git repository on deadlines.'),
-('APLUS',    'APlus Quizz score retriever', 'Scores are retrieved from APlus automatically.')
+('APLUS',    'APlus Quizz score retriever', 'Scores are retrieved from APlus automatically.'),
 ('ASSETMGR', 'Asset Manager', 'Loaning assets / study materials (''draft'') and return tracking (''accepted'').');
 
 

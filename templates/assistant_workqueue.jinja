@@ -9,19 +9,70 @@
 #}
 
 {% block content %}
+    <style>
+        table, td, th {  
+            border:             1px solid #ddd;
+            text-align:         left;
+        }
+
+        table {
+            border-collapse:    collapse;
+            width:              100%;
+        }
+
+        th, td {
+            padding:            3px;
+        }
+
+        th {
+            background:         #ddd;
+            font-weight:        Bold;
+        }
+
+        th>.truncate, td>.truncate{
+            width:              auto;
+            min-width:          0;
+            max-width:          300px;
+            display:            inline-block;
+            overflow:           hidden;
+            text-overflow:      ellipsis;
+            white-space:        nowrap;
+        }
+
+        tr.change_on_over:hover td {
+            background:#EDEDED;
+        }
+    </style>
     {% if queue|length == 0 %}
         <p>There does not appear to be any submissions left that need evaluating.</p>
     {% else %}
+        <p>Student submissions not yet evaluated</p>
         <p>
             <table>
                 <tr>
                     <th>Assignment</th>
+                    <th>Student</th>
+                    <th>Submitted</th>
                     <th>Deadline</th>
-                <tr>
+                    <th>Under Evaluation</th>
+                </tr>
         {% for sub in queue %}
-                <tr>
-                    <td>{{ sub['assignment_id'] }}</td>
+                <tr
+            {% if not sub['evaluator_uid'] %}
+                class="change_on_over"
+                onclick="location.href='assistant_start_evaluation.html?sid={{ sub['submission_id'] }}'"
+                style="cursor: pointer;"
+            {% endif %}
+                >
+                    <td><div class="truncate">{{ sub['assignment_id'] }} {{ sub['assignment_name'] }}</div></td>
+                    <td>{{ sub['lastname'] }}, {{ sub['firstname'] }}</td>
+                    <td>{{ sub['submitted'].strftime('%H:%M:%S %Y-%m-%d') }}</td>
                     <td>{{ sub['deadline'].strftime('%Y-%m-%d') }}</td>
+            {% if sub['evaluator_uid'] %}
+                    <td>Started {{ sub['evaluation_started'].strftime('%H:%M:%S %Y-%m-%d') }} by {{ sub['evaluator_name'] }}</td>
+            {% else %}
+                    <td></td>
+            {% endif %}
                 </tr>
         {% endfor %}
             </table>

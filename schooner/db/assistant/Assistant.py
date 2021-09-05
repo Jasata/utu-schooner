@@ -31,7 +31,7 @@ from typing import Type
 
 class Assistant(dict):
 
-    def __init__(self, cursor, course_id: str = None, assistant_uid: str = None):
+    def __init__(self, cursor, course_id: str = None, uid: str = None):
         self.cursor = cursor
         # Primary key is whatever are the call parameters, minus the first two
         self.pk = [k for k in locals().keys() if k not in ('self', 'cursor')]
@@ -96,13 +96,30 @@ class Assistant(dict):
 
 
 
+    def currently_evaluating(self):
+        """Return submission_id of the evaluation in progress, or None."""
+        SQL = """
+            SELECT      submission_id
+            FROM        assistant.evaluation
+            WHERE       uid = %(uid)s
+                        AND
+                        ended IS NULL
+        """
+        if self.cursor.execute(SQL, self).rowcount:
+            return self.cursor.fetchone()[0]
+        else:
+            return None
+
+
+
+
     @staticmethod
     def is_assistant(cursor, uid: str) -> bool:
         """Does the uid have any attachments into courses as an assistant?"""
         SQL = """
             SELECT      course_id
             FROM        assistant.assistant
-            WHERE       assistant_uid = %(uid)s
+            WHERE       uid = %(uid)s
         """
         return bool(cursor.execute(SQL, locals()).rowcount)
 
@@ -115,7 +132,7 @@ class Assistant(dict):
         SQL = """
             SELECT      course_id
             FROM        assistant.assistant
-            WHERE       assistant_uid = %(uid)s
+            WHERE       uid = %(uid)s
                         AND
                         course_id = %(course_id)s
         """
@@ -130,7 +147,7 @@ class Assistant(dict):
         SQL = """
             SELECT      name
             FROM        assistant.assistant
-            WHERE       assistant_uid = %(uid)s
+            WHERE       uid = %(uid)s
             ORDER BY    created DESC
             LIMIT 1
         """
@@ -150,7 +167,7 @@ class Assistant(dict):
             INSERT INTO assistant.assistant
             (
                 course_id,
-                assistant_uid,
+                uid,
                 name
             )
             VALUES

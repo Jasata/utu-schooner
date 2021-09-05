@@ -15,7 +15,7 @@ class AssistantList(list):
     def __init__(self, cursor, **kwargs):
         self.SQL = """
             SELECT      assistant.course_id,
-                        assistant.assistant_uid,
+                        assistant.uid AS assistant_uid,
                         assistant.name AS assistant_name,
                         assistant.created AS assistant_created,
                         assistant.status AS assistant_status,

@@ -97,9 +97,8 @@ class Assets(list):
 
 
 
-    def sort(self, key):
-        super().sort(key=lambda k : k[key])
-        return self
+    def sort(self, key, desc: bool = False):
+        super().sort(key=lambda k : k[key], reverse = desc)
 
 
 
@@ -117,7 +116,7 @@ class Assets(list):
             locals()
         ).rowcount:
             raise ValueError(
-                f"Could not record asset loan for '{item_id}' ('{course_id}', '{assignment_id}', '{uid}')"
+                f"Could not create asset loan record for '{asset}' ('{course_id}', '{assignment_id}', '{uid}')"
             )
         cursor.connection.commit()
         return cursor.fetchone()[0]
