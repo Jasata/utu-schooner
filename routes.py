@@ -23,6 +23,7 @@
 #   Most of actual work is implemented in the API modules.
 #
 import os
+from schooner.db.assistant.Evaluation import Evaluation
 from schooner.db import assistant
 import sys
 import time
@@ -328,6 +329,7 @@ def material_loan_get():
 
 
     except Exception as e:
+        app.logger.exception(str(e))
         return flask.render_template(
             "internal_error.jinja",
             title = "Internal Error",
@@ -748,7 +750,7 @@ def assistant_get():
 
 @app.route("/assistant_workqueue.html", methods=['GET'])
 def assistant_workqueue_get():
-    from schooner.db.assistant  import Assistant
+    from schooner.db.assistant  import CourseAssistant
     from schooner.api           import AssistantWorkqueue
     try:
         if not sso.is_authenticated:
@@ -756,13 +758,14 @@ def assistant_workqueue_get():
         data = request.args.to_dict(flat = True)
         if 'cid' not in data:
             raise ValueError("Request query parameter 'cid' not found!")
-        if not Assistant.in_course(g.db.cursor(), data['cid'], sso.uid):
-            raise ValueError(
-                f"You are not registed as an assistant to course '{data['cid']}'!"
-            )
         return flask.render_template(
             'assistant_workqueue.jinja',
             title = "Assistant Workqueue",
+            assistant = CourseAssistant(
+                g.db.cursor(),
+                data['cid'],
+                sso.uid
+            ),
             queue = AssistantWorkqueue(
                 g.db.cursor(),
                 sso.uid,
@@ -780,36 +783,11 @@ def assistant_workqueue_get():
 
 
 
-@app.route('/assistant_start_evaluation.html', methods=['GET'])
-def assistant_start_evaluation_get():
-    from schooner.db.core       import Submission
-    from schooner.db.assistant  import Assistant
+@app.route('/assistant_evaluation.html', methods=['GET'])
+def assistant_evaluation():
+    """Assistant work-view where comments and feedback is written."""
     try:
-        if not sso.is_authenticated:
-            raise Exception("Must be authenticated to access this view")
-        data = request.args.to_dict(flat = True)
-        # Submission_id ('sid') must be provided
-        if 'sid' not in data:
-            raise ValueError("Request query parameter 'sid' not found!")
-        sub = Submission(g.db.cursor(), data['sid'])
-        if not Assistant.in_course(g.db.cursor(), sub['course_id'], sso.uid):
-            raise ValueError(
-                f"You are not registed as an assistant to course '{sub['course_id']}'!"
-            )
-        ass = Assistant(g.db.cursor(), sub['course_id'], sso.uid)
-        if (sid := ass.currently_evaluating()):
-            raise Exception(
-                f"Already evaluating submission #{sid}. Complete that before starting another."
-            )
-        #
-        # Preliminaries done
-        #
-        #TODO: assistant.evaluation_start()
-        return flask.render_template(
-            'internal_error.jinja',
-            title = "View not complete!",
-            message = "This view has not yet been completely implemented"
-        )
+        raise Exception("NOT YET IMPLEMTED")
     except Exception as e:
         app.logger.exception(str(e))
         return flask.render_template(
@@ -818,6 +796,92 @@ def assistant_start_evaluation_get():
             message = str(e)
         )
 
+
+
+
+@app.route('/assistant_evaluation_begin.html', methods=['POST'])
+def assistant_start_evaluation_get():
+    from schooner.db.core       import Submission
+    from schooner.db.assistant  import CourseAssistant
+    from schooner.db.assistant  import Evaluation
+    # Required POST parameter(s): sid (submission_id)
+    try:
+        if not sso.is_authenticated:
+            raise Exception("Must be authenticated to access this view")
+        if not (sid := request.form.get('sid', None)):
+            raise ValueError("Request query parameter 'sid' not found!")
+        
+        sub = Submission(g.db.cursor(), sid)
+        ass = CourseAssistant(g.db.cursor(), sub['course_id'], sso.uid)
+
+        if ass['open_submission_id']:
+            raise Exception(
+                f"Already evaluating submission #{ass['open_submission_id']}. Complete that before starting another."
+            )
+        #
+        # Preliminaries done
+        #
+        # Create empty
+        evaluation = Evaluation(g.db.cursor())
+        # Begin evaluation
+        evaluation['uid'] = sso.uid
+        evaluation['submission_id'] = sid
+        token = evaluation.begin()
+        # Go and initiate local transfer at Assistant vm
+        return flask.redirect(f"http://localhost:8080/fetch?token={token}")
+
+    except Exception as e:
+        app.logger.exception(str(e))
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Internal Error",
+            message = str(e)
+        )
+
+
+
+
+@app.route('/assistant_evaluation_cancel.html', methods=['POST'])
+def assistant_evaluation_cancel():
+    from schooner.db.assistant import Evaluation
+    # Required POST parameter(s): sid (submission_id)
+    try:
+        if not sso.is_authenticated:
+            raise Exception("Must be authenticated to access this view")
+        if not (sid := request.form.get('sid', None)):
+            raise ValueError("Request query parameter 'sid' not found!")
+        # The following will raise ValueError if uid and submission_id do not match
+        try:
+            task = Evaluation(g.db.cursor(), sid)
+        except ValueError:
+            raise Exception(f"You are not registered as an assistant for the course in which submission #{sid} belongs to!") from None
+        if task['ended']:
+            raise Exception(f"Evaluation of submission #{sid} has been completed and cannot be cancelled!")
+        # Checks are done, cancel
+        task.cancel()
+        # Redirect to workqueue page
+        return flask.redirect(f"/assistant_workqueue.html?cid={task['course_id']}")
+    except Exception as e:
+        app.logger.exception(str(e))
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Internal Error",
+            message = str(e)
+        )
+
+
+
+
+@app.route('/assistant_evaluation_reject.html', methods=['POST'])
+def assistant_evaluation_reject():
+    pass
+
+
+
+
+@app.route('/assistant_evaluation_accept.html', methods=['POST'])
+def assistant_evaluation_reject():
+    pass
 
 
 
@@ -836,14 +900,23 @@ def exercise_get():
             raise AccessToken.InvalidAccessToken(
                 "Access token required and cannot be empty!"
             )
-        submission_id = AccessToken(g.db.cursor(), token).submission_id
         # Create archive of the exercise
-        archive = ExerciseArchive(g.db.cursor(), submission_id)
+        archive = ExerciseArchive(g.db.cursor(), token)
+        tmpfile = archive.create()
 
-        return (f"Access: {archive}", 200)
+        # As of August 2012, the MIME type recommended in RFC 6713
+        # is 'application/gzip'
+        return flask.send_file(
+            tmpfile,
+            as_attachment=True,
+            mimetype='application/gzip'
+        )
+        #return (f"Access: {tmpfile}", 200)
     except KeyError as e:
+        app.logger.exception(str(e))
         return ("URI parameter 'token' required!", 400)
-    except AccessToken.InvalidAccessToken as e:
+    except ExerciseArchive.InvalidAccessToken as e:
+        app.logger.exception(str(e))
         return (f"{str(e)}", 404)   # 404 Not Found
     except Exception as e:
         app.logger.exception(f"{str(e)}")

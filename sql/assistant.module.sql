@@ -81,6 +81,14 @@ COMMENT ON TABLE assistant.evaluation IS
 COMMENT ON COLUMN assistant.evaluation.uid IS
 'User ID of the assistant.';
 
+-- Unique index guaranteeing that there is only one in-progress evaluation
+-- at any given time.
+CREATE UNIQUE INDEX evaluation_single_inprogress_idx
+    ON assistant.evaluation (uid)
+    WHERE ended IS NULL;
+
+
+
 
 \echo '=== assistant.accesstoken'
 CREATE TABLE assistant.accesstoken
@@ -609,6 +617,73 @@ END
 $$;
 GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO "www-data";
 GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO schooner_dev;
+
+
+
+
+\echo '=== assistant.evaluation_cancel()'
+CREATE OR REPLACE FUNCTION
+assistant.evaluation_cancel(
+    in_uid              VARCHAR(10),
+    in_submission_id    INTEGER
+)
+    RETURNS TIME
+    LANGUAGE PLPGSQL
+    SECURITY DEFINER
+    VOLATILE
+    CALLED ON NULL INPUT
+AS $$
+DECLARE
+    r_evaluation        RECORD;
+    v_cancel_datetime   TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    -- Evaluation must not be completed
+    SELECT      *
+    FROM        assistant.evaluation
+    WHERE       submission_id = in_submission_id
+    INTO        r_evaluation;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'Evaluation for submission #% has not been started!',
+            in_submission_id
+            USING HINT = 'EVALUATION_NOT_STARTED';
+    ELSIF r_evaluation.uid != in_uid THEN
+        RAISE EXCEPTION
+            'Evaluation for submission #% exists, but is not by ''%''!',
+            in_submission_id, in_uid
+            USING HINT = 'EVALUATION_OWNER';
+    ELSIF r_evaluation.ended IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Evaluation for submission #% has been completed and cannot be cancelled!',
+            in_submission_id
+            USING HINT = 'EVALUATION_COMPLETED';
+    END IF;
+
+    -- NOTE: non-active assistant can still cancel/reject/complete on-going
+    --       evaluation. Non-active status merely preventes from starting new
+    --       evalutions.
+
+    -- Remove evaluation and access token
+    DELETE
+    FROM        assistant.evaluation
+    WHERE       submission_id = in_submission_id;
+
+    DELETE
+    FROM        assistant.accesstoken
+    WHERE       submission_id = in_submission_id;
+
+    --
+    -- Return time spent on evaluation
+    --
+    RETURN v_cancel_datetime - r_evaluation.started;
+
+END
+$$;
+GRANT EXECUTE ON FUNCTION assistant.evaluation_cancel TO "www-data";
+GRANT EXECUTE ON FUNCTION assistant.evaluation_cancel TO schooner_dev;
+
+
+
 
 
 

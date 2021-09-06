@@ -114,6 +114,19 @@ class Assistant(dict):
 
 
     @staticmethod
+    def courses(cursor, uid: str) -> list:
+        """Returns a list of course_ids for which the uid is registered as an assistant."""
+        SQL = """
+            SELECT      course_id
+            FROM        assistant.assistant
+            WHERE       uid = %(uid)s
+        """
+        return list(cursor.execute(SQL, locals()).fetchall())
+
+
+
+
+    @staticmethod
     def is_assistant(cursor, uid: str) -> bool:
         """Does the uid have any attachments into courses as an assistant?"""
         SQL = """

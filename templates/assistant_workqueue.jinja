@@ -4,78 +4,119 @@
 
     REQUIRES
         title:          str
+        assistant:      dict {**Assistant, 'name', 'evaluating'}
         queue:          list schooner.api.AssistantWorkqueue
         
 #}
 
 {% block content %}
-    <style>
-        table, td, th {  
-            border:             1px solid #ddd;
-            text-align:         left;
+<script>
+    function cancel_evaluation(submission_id) {
+        if (!window.confirm("Are you sure?")) {
+            return false;
         }
+        var form = document.createElement("form");
+        var element1 = document.createElement("input");
 
-        table {
-            border-collapse:    collapse;
-            width:              100%;
-        }
+        form.method = "POST";
+        form.action = "assistant_evaluation_cancel.html";
 
-        th, td {
-            padding:            3px;
-        }
+        element1.value = submission_id;
+        element1.name = "sid";
 
-        th {
-            background:         #ddd;
-            font-weight:        Bold;
-        }
+        form.appendChild(element1);
+        document.body.appendChild(form);
 
-        th>.truncate, td>.truncate{
-            width:              auto;
-            min-width:          0;
-            max-width:          300px;
-            display:            inline-block;
-            overflow:           hidden;
-            text-overflow:      ellipsis;
-            white-space:        nowrap;
-        }
+        form.submit();
+    }
+</script>
+<style>
+    table, td, th {  
+        border:             1px solid #ddd;
+        text-align:         left;
+    }
 
-        tr.change_on_over:hover td {
-            background:#EDEDED;
-        }
-    </style>
+    table {
+        border-collapse:    collapse;
+        width:              100%;
+    }
+
+    th, td {
+        padding:            3px;
+    }
+
+    th {
+        background:         #ddd;
+        font-weight:        Bold;
+    }
+
+    th>.truncate, td>.truncate{
+        width:              auto;
+        min-width:          0;
+        max-width:          300px;
+        display:            inline-block;
+        overflow:           hidden;
+        text-overflow:      ellipsis;
+        white-space:        nowrap;
+    }
+
+    tr.change_on_over:hover td {
+        background:         #EDEDED;
+    }
+</style>
+    <p>
+        <h2>{{ assistant['course_code'] }} {{ assistant['course_name'] }}</h2>
+        <div>{{ assistant['name'] }}, status as a course assistant: {{ assistant['status'] }}</div>
+    </p>
+    <p><div>
+{% if assistant['open_submission_id'] %}
+        You have a submission (#{{ assistant['open_submission_id'] }}) open for evaluation.
+        <button onclick="location.href='assistant_evaluation.html?sid={{ assistant['open_submission_id'] }}'">Continue</button>&nbsp;<button onclick="cancel_evaluation({{ assistant['open_submission_id'] }})">Cancel</button>
+{% elif assistant['status'] == 'active' %}
     {% if queue|length == 0 %}
-        <p>There does not appear to be any submissions left that need evaluating.</p>
+        Submission queue is empty. Nothing to do today. Check back tomorrow.
     {% else %}
-        <p>Student submissions not yet evaluated</p>
-        <p>
-            <table>
-                <tr>
-                    <th>Assignment</th>
-                    <th>Student</th>
-                    <th>Submitted</th>
-                    <th>Deadline</th>
-                    <th>Under Evaluation</th>
-                </tr>
-        {% for sub in queue %}
-                <tr
-            {% if not sub['evaluator_uid'] %}
-                class="change_on_over"
-                onclick="location.href='assistant_start_evaluation.html?sid={{ sub['submission_id'] }}'"
-                style="cursor: pointer;"
-            {% endif %}
-                >
-                    <td><div class="truncate">{{ sub['assignment_id'] }} {{ sub['assignment_name'] }}</div></td>
-                    <td>{{ sub['lastname'] }}, {{ sub['firstname'] }}</td>
-                    <td>{{ sub['submitted'].strftime('%H:%M:%S %Y-%m-%d') }}</td>
-                    <td>{{ sub['deadline'].strftime('%Y-%m-%d') }}</td>
-            {% if sub['evaluator_uid'] %}
-                    <td>Started {{ sub['evaluation_started'].strftime('%H:%M:%S %Y-%m-%d') }} by {{ sub['evaluator_name'] }}</td>
-            {% else %}
-                    <td></td>
-            {% endif %}
-                </tr>
-        {% endfor %}
-            </table>
+        Currently not evaluating a submission. <button onclick="">Start evaluation</button>
+    {% endif %}
+{% else %}
+        You are registered as an assistant to this course, but are currently not active (and thus cannot start evaluations).
+{% endif %}
+    </div></p>
+{% if queue|length > 0 %}
+    <p>Student submissions not yet evaluated:</p>
+    <p>
+        <table>
+            <tr>
+                <th>Assignment</th>
+                <th>Student</th>
+                <th>Submitted</th>
+                <th>Deadline</th>
+                <th>Under Evaluation</th>
+            </tr>
+{% for sub in queue %}
+
+{% if not sub['evaluator_uid'] %}
+<tr class="change_on_over"
+    onclick="location.href='assistant_start_evaluation.html?sid={{ sub['submission_id'] }}'"
+    style="cursor: pointer;">
+{% else %}
+<tr>
+{% endif %}
+    <td><div class="truncate">{{ sub['assignment_id'] }} {{ sub['assignment_name'] }}</div></td>
+    <td>{{ sub['lastname'] }}, {{ sub['firstname'] }}</td>
+    <td>{{ sub['submitted'].strftime('%Y-%m-%d %H:%M:%S') }}</td>
+    <td>{{ sub['deadline'].strftime('%Y-%m-%d') }}</td>
+{% if sub['evaluator_uid'] == assistant['uid'] %}
+    <td>(by you) <button>Continue</button> <button>Cancel</button></td>
+{% elif sub['evaluator_uid'] %}
+    <td>Started by {{ sub['evaluator_name'] }} on {{ sub['evaluation_started'].strftime('%Y-%m-%d %H:%M:%S') }}</td>
+{% else %}
+    <td></td>
+{% endif %}
+</tr>
+{% endfor %}
+</table>
+
         </p>
     {% endif %}
 {% endblock %}

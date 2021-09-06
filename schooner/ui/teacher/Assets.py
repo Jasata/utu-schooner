@@ -93,12 +93,15 @@ class Assets(list):
             super().__init__(
                 [dict(zip([k[0] for k in cursor.description], row)) for row in cursor]
             )
+        else:
+            super().__init__()
 
 
 
 
     def sort(self, key, desc: bool = False):
         super().sort(key=lambda k : k[key], reverse = desc)
+        return self
 
 
 

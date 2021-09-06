@@ -310,6 +310,12 @@ if __name__ == '__main__':
                 print(k, "=", v)
         """
 
+        # CourseAssistant
+        from schooner.db.assistant import CourseAssistant
+        ca = CourseAssistant(cursor, 'DTEK0000-3002', 'jasata')
+        for k, v in ca.items():
+            print(k, "=", v)
+
     """
     # Why does this print root keys twice?
     from schooner.util import AppConfig

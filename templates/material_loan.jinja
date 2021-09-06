@@ -6,7 +6,7 @@
         title:      str
         course:     Course dictionary object
         assignment: Assignment dictionary object
-        loans:      schooner.ui.teacher.MaterialLoan -list of dictionaries
+        loans:      schooner.ui.teacher.Assets -list of dictionaries
 #}
 
 {% block content %}
@@ -86,7 +86,7 @@
                     <td style="text-align: right;"><input type="button" onclick="return returnAsset(this.form)" value="Return"></td>
                 </tr>
                 <tr>
-                    <td colspan="3"><b>Student</b> (highlighted has signed assets):</td>
+                    <td colspan="3"><b>Student</b> (highlighted enrollees have signed for asset(s)):</td>
                 <tr>
                     <td colspan="3"><select id="uid" name="uid" size="20">
         {% for person in loans %}
