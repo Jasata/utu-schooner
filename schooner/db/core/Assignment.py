@@ -11,6 +11,7 @@
 
 from schooner.db.email  import Template
 from schooner.jtd       import JTDSubmission
+from schooner.jtd       import JTDAssignment
 from datetime           import timedelta
 from datetime           import datetime
 from datetime           import date
@@ -84,12 +85,19 @@ class Assignment(dict):
 
         
     @staticmethod
-    def send_retrieval_failure_mail(cursor, assignment:dict) -> None:
+    def send_retrieval_failure_mail(cursor, assignment:dict, uid:str, explain:str) -> None:
         template    = Template(cursor, 'HUBBOT_FAIL')
+        data = JTDAssignment(
+                    cursor, 
+                    assignment['course_id'], 
+                    assignment['assignment_id'], 
+                    uid
+                )
+                
         template.parse_and_queue(
             assignment['course_id'],
-            assignment['enrollee_uid'],
-            **assignment
+            uid,
+            **{**data, 'explain': explain}
         )
 
 

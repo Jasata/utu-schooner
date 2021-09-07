@@ -264,7 +264,7 @@ Should you, for whatever reason, need to change your GitHub account or repositor
 Regards,
 
 {{ course_code }}
-{{ course_email }}'
+{{ course_email or "" }}'
 );
 
 INSERT INTO email.template
@@ -286,7 +286,7 @@ VALUES
 Regards,
 
 {{ course_code }}
-{{ course_email }}'
+{{ course_email or "" }}'
 );
 
 INSERT INTO email.template
@@ -301,14 +301,16 @@ VALUES
 (
     'HUBBOT_FAIL',
     'text/plain',
-    'normal',
+    'high',
     'Your submission was not found',
     'Your submission for assignment {{ assignment_id }} on course {{ course_id }} has not been found from your GitHub repository.
+
+Reason: {{ explain }}
 
 Regards,
 
 {{ course_code }}
-{{ course_email }}'
+{{ course_email or "" }}'
 );
 
 
@@ -490,5 +492,94 @@ $$;
 GRANT EXECUTE ON FUNCTION email.jtd_course_welcome_rec TO "www-data";
 GRANT EXECUTE ON FUNCTION email.jtd_course_welcome_rec TO schooner_dev;
 
+
+
+CREATE OR REPLACE FUNCTION email.jtd_assignment_rec(
+    in_course_id        VARCHAR,
+    in_assignment_id    VARCHAR,
+    in_uid              VARCHAR
+)
+    RETURNS TABLE
+    (
+        course_id                   VARCHAR,
+        course_code                 VARCHAR,
+        course_name                 VARCHAR,
+        course_email                VARCHAR,
+        course_github_account       VARCHAR,
+        course_start                TIMESTAMP,
+        course_end                  TIMESTAMP,
+        course_description          VARCHAR,
+        assignment_id               VARCHAR,
+        assignment_name             VARCHAR,
+        assignment_description      VARCHAR,
+        assignment_points           INTEGER,
+        assignment_pass             INTEGER,
+        assignment_retries          INTEGER,
+        assignment_deadline         DATE,
+        assignment_latepenalty      NUMERIC,
+        assignment_last_chance      DATE,
+        enrollee_uid                VARCHAR,
+        enrollee_studentid          VARCHAR,
+        enrollee_lastname           VARCHAR,
+        enrollee_firstname          VARCHAR,
+        enrollee_github_account     VARCHAR,
+        enrollee_github_repository  VARCHAR
+
+    )
+    LANGUAGE PLPGSQL
+AS $$
+-- So, why not just a SELECT?
+-- This function will be expanded to contain information about the first
+-- lecture / event, once the data structures will be added for those (2022).
+-- Until then, this is more of a placeholder...
+BEGIN
+    RETURN QUERY
+        SELECT      assignment.course_id,
+                    course.code,
+                    course.name,
+                    course.email,
+                    course.github_account,
+                    course.opens,
+                    course.closes,
+                    course.description,
+                    assignment.assignment_id,
+                    assignment.name,
+                    assignment.description,
+                    assignment.points,
+                    assignment.pass,
+                    assignment.retries,
+                    assignment.deadline,
+                    assignment.latepenalty,
+                    core.submission_last_retrieval_date(assignment.deadline, assignment.latepenalty) - 1,
+                    enrollee.uid,
+                    enrollee.studentid,
+                    enrollee.lastname,
+                    enrollee.firstname,
+                    enrollee.github_account,
+                    enrollee.github_repository
+        FROM        core.assignment
+                    INNER JOIN core.course
+                    ON (
+                        assignment.course_id = course.course_id
+                    )
+                    INNER JOIN core.enrollee
+                    ON (
+                        assignment.course_id = enrollee.course_id
+                    )
+        WHERE       assignment.assignment_id = in_assignment_id
+                    AND
+                    assignment.course_id = in_course_id
+                    AND
+                    enrollee.uid = in_uid;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'Assignment ''%'' not found!', in_assignment_id
+            USING HINT = 'ASSIGNMENT_NOT_FOUND';
+    END IF;
+    RETURN;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION email.jtd_assignment_rec TO "www-data";
+GRANT EXECUTE ON FUNCTION email.jtd_assignment_rec TO schooner_dev;
 
 -- EOF

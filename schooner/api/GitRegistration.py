@@ -24,6 +24,7 @@ class GitRegistration(dict):
                         course.name AS course_name,
                         course.opens AS course_opens,
                         course.closes AS course_closes,
+                        course.github_account as course_github_account,
                         enrollee.uid,
                         CASE
                             WHEN submission.assignment_id IS NULL THEN 'n'

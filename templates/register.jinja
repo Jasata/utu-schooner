@@ -43,7 +43,8 @@
                 size="39"
                 value="{{ registration.submission_content if registration.submission_content }}">
             <button>Update</button><br>
-            <i>Submitted on {{ registration.submission_created.strftime('%d.%m.%Y %H:%m:%S') }}, but not yet registered. Have you sent the collaborator invitation?</i>
+            <b>Registration may take up to 5 minutes.</b> <i>Current registration attempt was submitted on {{ registration.submission_created.strftime('%d.%m.%Y %H:%m:%S') }}, but not yet processed by the backend system.<br>
+            If you haven't already created a collaborator invitation for your GitHub repository, please do so now for the course's GitHub account: {{ registration.course_github_account }}.</i>
         {% else %}
             <input
                 type="text"

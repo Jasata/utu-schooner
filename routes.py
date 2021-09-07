@@ -30,6 +30,7 @@ import time
 import json
 import flask
 import logging
+import datetime
 
 # These are the only four items so common that they can be referred without
 # the 'flask.' prefix, and reader still knows what they are.
@@ -786,8 +787,54 @@ def assistant_workqueue_get():
 @app.route('/assistant_evaluation.html', methods=['GET'])
 def assistant_evaluation():
     """Assistant work-view where comments and feedback is written."""
+    # IMPORTANT This view requires the evaluation to have been started
+    #           (assistant.evaluation record exists) BUT NOT FINISHED!
+    #           (assistant.evaluation.ended must be NULL ...AND
+    #           core.submission.state must be 'draft')
+    #           Accessing user (sso.uid) must also be the assistant who's
+    #           uid has been registed into the evaluation record so that
+    #           assistants won't mess up each other's evaluations by
+    #           accident (or some kind...?)
+    from schooner.db.assistant  import CourseAssistant
+    from schooner.api           import AssignmentSubmission
     try:
-        raise Exception("NOT YET IMPLEMTED")
+        if not sso.is_authenticated:
+            raise Exception("Must be authenticated to access this view")
+        if not (sid := request.args.get('sid', None)):
+            raise ValueError("Request query parameter 'sid' not found!")
+        assistant  = CourseAssistant.create_from_submission_id(
+            g.db.cursor(),
+            sid
+        )
+        # When assistant information is retrieved by using submission_id,
+        # it might be someone else than the currently authenticated one.
+        if assistant['uid'] != sso.uid:
+            raise Exception(
+                f"You are not the evaluator for submission #{sid}! '{assistant['uid']}' has taken it."
+            )
+        # Check that the submission is open
+        submission = AssignmentSubmission(
+            g.db.cursor(),
+            sid
+        )
+        if not submission['evaluation_started']:
+            # This should not be possible after CourseAssistant.create_from_submission_id()
+            raise Exception(
+                f"This submission (#{sid}) does not have evaluation record (evaluation has not yet been started)!"
+            )
+        if submission['state'] != 'draft':
+            raise Exception(
+                f"This submission (#{sid}) is not in 'draft' state, but in '{submission['state']}'! Only 'draft' submission may be evaluated."
+            )
+        #
+        # All checks should be now done. Present the evaluation form for the assistant.
+        #
+        return flask.render_template(
+            'assistant_evaluation.jinja',
+            title = "Submission evaluation",
+            message = "Not yet implemented",
+            submission = submission
+        )
     except Exception as e:
         app.logger.exception(str(e))
         return flask.render_template(
@@ -804,29 +851,38 @@ def assistant_start_evaluation_get():
     from schooner.db.core       import Submission
     from schooner.db.assistant  import CourseAssistant
     from schooner.db.assistant  import Evaluation
+    from schooner.api           import AssistantWorkqueue
     # Required POST parameter(s): sid (submission_id)
     try:
         if not sso.is_authenticated:
             raise Exception("Must be authenticated to access this view")
-        if not (sid := request.form.get('sid', None)):
-            raise ValueError("Request query parameter 'sid' not found!")
-        
-        sub = Submission(g.db.cursor(), sid)
-        ass = CourseAssistant(g.db.cursor(), sub['course_id'], sso.uid)
-
+        if not (cid := request.form.get('cid', None)):
+            raise ValueError("FORM parameter 'Cid' not found!")
+        # Check that the caller is course assistant (raises an exception if not)
+        ass = CourseAssistant(g.db.cursor(), cid, sso.uid)
         if ass['open_submission_id']:
             raise Exception(
                 f"Already evaluating submission #{ass['open_submission_id']}. Complete that before starting another."
             )
+
+        queue = AssistantWorkqueue(
+                g.db.cursor(),
+                sso.uid,
+                course_id = cid
+            ).sort('submitted')
+        if not queue:
+            raise Exception("No more pending evaluations!")
+
         #
         # Preliminaries done
         #
         # Create empty
         evaluation = Evaluation(g.db.cursor())
-        # Begin evaluation
+        evaluation['submission_id'] = queue[0]['submission_id']
         evaluation['uid'] = sso.uid
-        evaluation['submission_id'] = sid
+        # Begin evaluation
         token = evaluation.begin()
+
         # Go and initiate local transfer at Assistant vm
         return flask.redirect(f"http://localhost:8080/fetch?token={token}")
 
@@ -874,14 +930,22 @@ def assistant_evaluation_cancel():
 
 @app.route('/assistant_evaluation_reject.html', methods=['POST'])
 def assistant_evaluation_reject():
-    pass
+    return flask.render_template(
+        'internal_error.jinja',
+        title = "Not yet implemented",
+        message = "Not yet implemented"
+    )
 
 
 
 
 @app.route('/assistant_evaluation_accept.html', methods=['POST'])
-def assistant_evaluation_reject():
-    pass
+def assistant_evaluation_accept():
+    return flask.render_template(
+        'internal_error.jinja',
+        title = "Not yet implemented",
+        message = "Not yet implemented"
+    )
 
 
 

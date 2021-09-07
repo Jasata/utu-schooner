@@ -19,12 +19,20 @@ class EnrolleeList(list):
         """
         where = []
         for k, v in kwargs.items():
-            if isinstance(v, list):
-                where.append(f" {k} = ANY(%({k})s) ")
+            if not isinstance(v, list):
+                kwargs[k] = [v]
+            if k == 'has_github_account':
+                where.append(
+                    """
+                    github_account IS NOT NULL
+                    """
+                )
             else:
-                where.append(f" {k} = %({k})s ")
+                where.append(f" {k} = ANY(%({k})s) ")
         if where:
             self.SQL += f" WHERE {' AND '.join(where)}"
+        # Remove "dud" keys
+        kwargs.pop('has_github_account', None)
         self.args = kwargs
         if cursor.execute(self.SQL, kwargs).rowcount:
             super().__init__(

@@ -1,0 +1,104 @@
+{% extends 'layout.jinja' %}
+{#
+    Assistant evaluation view.
+
+    REQUIRES
+        title:          str
+        assistant:      dict schooner.db.assistant.CourseAssistant
+        submission:     dict schooner.api.AssignmentSubmission
+        
+#}
+
+{% block content %}
+<script>
+    function acceptSubmission(form) {
+        if (!window.confirm("Are you sure?")) {
+            return false
+        }
+        form.action = "/assistant_evaluation_accept.html"
+        form.submit()
+        return true
+    }
+
+    function rejectSubmission(form) {
+        if (!window.confirm("Are you sure?")) {
+            return false
+        }
+        form.action = "/assistant_evaluation_reject.html"
+        form.submit()
+        return true
+    }
+
+    function cancelEvaluation(form) {
+        if (!window.confirm("Are you sure?")) {
+            return false
+        }
+        console.log('User confirms cancellation')
+        form.action = "/assistant_evaluation_cancel.html"
+        form.submit()
+        return true
+    }
+</script>
+    <h2>Submission Evaluation</h2>
+    <details>
+        <summary><b>Course</b></summary>
+        <table>
+        <tr>
+            <td>Code and Name</td>
+            <td>{{ submission['course_code'] }} {{ submission['course_name'] }}</td>
+        </tr>
+        <tr>
+            <td>Start and End</td>
+            <td>{{ submission['course_opens'] }} - {{ submission['course_closes'] or "" }}</td>
+        </tr>
+        </table>
+    </details>
+    <details>
+        <summary><b>Assignment</b></summary>
+        <table>
+        <tr>
+            <td>ID and Name</td>
+            <td>{{ submission['assignment_id'] }} {{ submission['assignment_name'] }}</td>
+        </tr>
+        <tr>
+            <td>Maximum points</td>
+            <td>{{ submission['assignment_max_points'] }}</td>
+        </tr>
+        <tr>
+            <td>Poits required to pass</td>
+            <td>{{ submission['assignment_points_to_pass'] }}</td>
+        </tr>
+        <tr>
+            <td>Allowed retries</td>
+            <td>{{ submission['assignment_retries'] or "(unlimited)" }}</td>
+        </tr>
+        <tr>
+            <td>Deadline</td>
+            <td>{{ submission['assignment_deadline'] or "(unrestricted)" }}</td>
+        </tr>
+        <tr>
+            <td>Scoring submission</td>
+            <td>{{ submission['assignment_evaluation'] }} submission</td>
+        </tr>
+        </table>
+    </details>
+    <p>&nbsp;</p>
+    <form action="#" method="post">
+    <input type="hidden" name="sid" value="{{ submission['submission_id'] }}">
+    <table>
+        <tr style="background: silver;">
+            <th>Submission #{{ submission['submission_id'] }} by {{ submission['enrollee_lastname'] }}, {{ submission['enrollee_firstname'] }} ({{ submission['submitted'].strftime('%Y-%m-%d %H:%M:%S') }})</td>
+        </tr>
+        <tr>
+            <td><b>Feedback</b><br><textarea id="feedback" name="feedback" rows="20" cols="100"></textarea></td>
+        </tr>
+        <tr>
+            <td><b>Confidential Notes:</b> (not sent to student)<br><textarea id="confidential" name="confidential" rows="4" cols="100"></textarea></td>
+        </tr>
+        <tr>
+            <td style="align: right;"><input type="button" onclick="return acceptSubmission(this.form)" value="Accept and Close Evaluation">&nbsp;<input type="button" onclick="return rejectSubmission(this.form)" value="Reject Submission">&nbsp;<input type="button" onclick="return cancelEvaluation(this.form)" value="Cancel Evaluation"></td>
+        </tr>
+    </table>
+    </form>
+    <p></p>
+{% endblock %}

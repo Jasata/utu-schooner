@@ -10,15 +10,21 @@
 #
 #
 # Consider this more "proper" data object than "Assistant"
+#
+#
 
 
 class CourseAssistant(dict):
+
 
     def __init__(self, cursor, course_id: str, uid: str):
         self.cursor = cursor
         self['course_id'] = course_id
         self['uid'] = uid
         self.__update_self()
+
+
+
 
     def __update_self(self):
         self.SQL = """
@@ -49,7 +55,7 @@ class CourseAssistant(dict):
                         AND
                         assistant.course_id = %(course_id)s
         """
-        if not self.cursor.execute(self.SQL, self).rowcount:
+        if self.cursor.execute(self.SQL, self).rowcount != 1:
             raise Exception(
                 f"Assistant '{self['uid']}' registration for course '{self['course_id']}' not found!"
             )
@@ -77,6 +83,25 @@ class CourseAssistant(dict):
         self.cursor.excute(SQL, self)
         if commit:
             self.cursor.connection.commit()
+
+
+
+
+    @classmethod
+    def create_from_submission_id(cls, cursor, sid: int):
+        """Creates an instance of this class using submission_id in assistant.evaluation, instead of the (course_id, uid) key in assistant.assistant. This of course, requires that the specified submission has an evaluation row."""
+        SQL = """
+            SELECT      course_id,
+                        uid
+            FROM        assistant.evaluation
+            WHERE       submission_id = %(sid)s
+        """
+        if (rec := cursor.execute(SQL, locals()).fetchone()):
+            return CourseAssistant(cursor, rec[0], rec[1])
+        raise ValueError(
+            f"CourseAssistant cannot be created with a submission id #{sid} because it does not (yet) have an evaluation record that would link it and an assistant."
+        )
+
 
 
 

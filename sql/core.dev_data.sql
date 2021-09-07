@@ -559,6 +559,18 @@ VALUES
 );
 
 INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty
+)
 VALUES
 (
     'T01',
@@ -570,8 +582,7 @@ VALUES
     40,
     0,
     '2021-08-05',
-    NULL,
-    DEFAULT
+    NULL
 ),
 (
     'T02',
@@ -583,9 +594,10 @@ VALUES
     40,
     0,
     '2021-08-12',
-    NULL,
-    DEFAULT
-);
+    NULL
+),
+('E01', 'DTEK0002-3002', 'First exercise', 'Hello Universe', 'HUBBOT', 40, 20, 2, '2019-09-06', 0.10),
+('E02', 'DTEK0002-3002', 'Second exercise', 'Hello Infinity', 'HUBBOT', 40, 20, 2, '2020-09-07', 0.20);
 
 
 --

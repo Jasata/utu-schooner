@@ -80,6 +80,11 @@ CONFIG_FILE = "app.conf"
 if __name__ == '__main__': 
  
     script_start_time = time.time()
+    #
+    # Cron job speciality - change to script's directory
+    #
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
     cfg = AppConfig(CONFIG_FILE, "hubreg")
 
     #
@@ -115,6 +120,8 @@ if __name__ == '__main__':
             for reg in pendingregs:
                 # Registration level try-except
                 try: 
+                    if not reg['course_accesstoken']:
+                        raise Exception("GitHub access token is missing.")
                     gh_session = requests.Session()
                     gh_session.auth = (reg['course_account'], reg['course_accesstoken'])
 
@@ -126,24 +133,30 @@ if __name__ == '__main__':
                     utuid = reg['uid']
                     github_account = reg['student_account']
                     course_code = reg['course_code']
-                    repo_url = f"https://api.github.com/repos/{reg['student_account']}/{reg['course_code']}"
+                    repo_url = ''
 
                     for invite in invitations:
+
+                        log.debug(f"Invite from: {invite['repository']['owner']['login']}")
                         repo = invite.get('repository')
-                        if repo['owner']['login'] == github_account: # and repo['name'] == course_code:
+                        repo_url = f"https://api.github.com/repos/{reg['student_account']}/{repo['name']}"
+                        if repo['owner']['login'] == github_account:
                             reg['student_repository'] = repo['name']
                             reg['invite_matched'] = True
 
                             # Accept invite
+                            log.debug("ACCEPTING INVITE")
                             requests.patch(
                                 f"{url}/{invite.get('id')}",
                                 data={}, 
                                 headers=headers
                             )
 
+                            log.debug(f"Request status: {requests.get(repo_url, headers=headers).status_code}")
                             # Check that the repository is now accessible
                             if requests.get(repo_url, headers=headers).status_code == 200:
                                 # Register AND send notification
+                                log.debug("REGISTER REPO")
                                 GitRegistration.register_repository(
                                     cursor,
                                     reg['submission_id'],

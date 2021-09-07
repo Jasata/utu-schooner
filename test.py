@@ -275,27 +275,6 @@ if __name__ == '__main__':
             print(c['code'], c['name'])
         """
 
-        from schooner.db.assistant import Assistant
-        from schooner.db.assistant import AssistantList
-
-        print("=== Assistants for course DTEK0068-3002")
-        al = AssistantList(cursor, course_id = 'DTEK0068-3002')
-        al.sort('assistant_uid', desc=True)
-        for a in al:
-            for k, v in a.items():
-                print(k, "=", v)
-        print("and again.....")
-        al.sort('assistant_uid', desc=False)
-        for a in al:
-            for k, v in a.items():
-                print(k, "=", v)
-
-        a = Assistant(cursor, 'DTEK0000-3002', 'jasata')
-        if a.currently_evaluating():
-            print("Currently evaluating")
-        else:
-            print("Currently slacking off")
-
         """
         print("=== Courses for assistant jasata")
         cl = AssistantList(cursor, uid = 'jasata')
@@ -310,11 +289,36 @@ if __name__ == '__main__':
                 print(k, "=", v)
         """
 
-        # CourseAssistant
-        from schooner.db.assistant import CourseAssistant
-        ca = CourseAssistant(cursor, 'DTEK0000-3002', 'jasata')
-        for k, v in ca.items():
-            print(k, "=", v)
+
+        """ 
+        class SkipIt(Exception):
+            pass
+        from schooner.api import GitAssignments
+        assignments = GitAssignments(cursor)
+        for a in assignments:
+            print("Assignment ", a['course_id'], a['assignment_id'])
+            for s in assignments.submissions(**a):
+                try:
+                    print("\t", s)
+                    if s['draft_submission_id']:
+                        raise SkipIt("Draft exists!")
+                    if s['accepted_submission_id']:
+                        raise SkipIt("Already accepted!")
+                    if a['retries']:
+                        if a['retries'] < s['n_submissions']:
+                            raise SkipIt("Max retries exhausted!")
+                    if s['status'] != 'active':
+                        raise SkipIt("Student no longer active on this course!")
+                    print("\tAttempting to fetch repo...")
+                except SkipIt as e:
+                    # Emit messages ONLY in debug mode here
+                    print("\tCOMPLAINT DEPARTMENT:", str(e))
+                    pass
+        """
+
+        from schooner.jtd import JTDAssignment
+        jtd = JTDAssignment(cursor, 'DTEK0000-3002', 'E01', 'jasata')
+        print(jtd)
 
     """
     # Why does this print root keys twice?

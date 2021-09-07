@@ -1,10 +1,10 @@
 {% extends 'layout.jinja' %}
 {#
-    Assistant index view.
+    Assistant workqueue view.
 
     REQUIRES
         title:          str
-        assistant:      dict {**Assistant, 'name', 'evaluating'}
+        assistant:      dict schooner.db.assistant.CourseAssistant
         queue:          list schooner.api.AssistantWorkqueue
         
 #}
@@ -25,6 +25,19 @@
         element1.name = "sid";
 
         form.appendChild(element1);
+        document.body.appendChild(form);
+
+        form.submit();
+    }
+
+    function startEvaluation() {
+        var form = document.createElement("form");
+        form.method = "POST";
+        form.action = "assistant_evaluation_begin.html";
+        var element = document.createElement("input");
+        element.value = "{{ assistant['course_id'] }}";
+        element.name = "cid";
+        form.appendChild(element);
         document.body.appendChild(form);
 
         form.submit();
@@ -76,7 +89,7 @@
     {% if queue|length == 0 %}
         Submission queue is empty. Nothing to do today. Check back tomorrow.
     {% else %}
-        Currently not evaluating a submission. <button onclick="">Start evaluation</button>
+        Currently not evaluating a submission. <button onclick="startEvaluation()">Start evaluation</button>
     {% endif %}
 {% else %}
         You are registered as an assistant to this course, but are currently not active (and thus cannot start evaluations).
@@ -93,30 +106,23 @@
                 <th>Deadline</th>
                 <th>Under Evaluation</th>
             </tr>
-{% for sub in queue %}
+    {% for sub in queue %}
 
-{% if not sub['evaluator_uid'] %}
-<tr class="change_on_over"
-    onclick="location.href='assistant_start_evaluation.html?sid={{ sub['submission_id'] }}'"
-    style="cursor: pointer;">
-{% else %}
-<tr>
-{% endif %}
-    <td><div class="truncate">{{ sub['assignment_id'] }} {{ sub['assignment_name'] }}</div></td>
-    <td>{{ sub['lastname'] }}, {{ sub['firstname'] }}</td>
-    <td>{{ sub['submitted'].strftime('%Y-%m-%d %H:%M:%S') }}</td>
-    <td>{{ sub['deadline'].strftime('%Y-%m-%d') }}</td>
-{% if sub['evaluator_uid'] == assistant['uid'] %}
-    <td>(by you) <button>Continue</button> <button>Cancel</button></td>
-{% elif sub['evaluator_uid'] %}
-    <td>Started by {{ sub['evaluator_name'] }} on {{ sub['evaluation_started'].strftime('%Y-%m-%d %H:%M:%S') }}</td>
-{% else %}
-    <td></td>
-{% endif %}
-</tr>
-{% endfor %}
-</table>
-
-        </p>
+    <tr>
+        <td><div class="truncate">{{ sub['assignment_id'] }} {{ sub['assignment_name'] }}</div></td>
+        <td>{{ sub['lastname'] }}, {{ sub['firstname'] }}</td>
+        <td>{{ sub['submitted'].strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>{{ sub['deadline'].strftime('%Y-%m-%d') }}</td>
+    {% if sub['evaluator_uid'] %}
+        <td>Started by {{ sub['evaluator_name'] }} on {{ sub['evaluation_started'].strftime('%Y-%m-%d %H:%M:%S') }}</td>
+    {% else %}
+        <td></td>
     {% endif %}
+    </tr>
+
+    {% endfor %}
+    </table>
+    </p>
+{% endif %}
+
 {% endblock %}

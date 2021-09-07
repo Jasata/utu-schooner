@@ -62,7 +62,8 @@ class Template(dict):
                         enrollee.email AS sent_to,
                         NULL AS subject,
                         NULL AS body,
-                        enrollee.notifications
+                        enrollee.notifications,
+                        enrollee.status AS enrollee_status
             FROM        core.course INNER JOIN
                         core.enrollee ON (course.course_id = enrollee.course_id)
             WHERE       course.course_id = %(cid)s
@@ -89,6 +90,10 @@ class Template(dict):
         elif not message['sent_to']:
             raise Template.NotSent(
                 f"Enrollee ('{cid}', '{uid}') has no email address."
+            )
+        elif message['enrollee_status'] != 'active':
+            raise Template.NotSent(
+                f"Enrollee ('{cid}', '{uid}') is not active in the course."
             )
 
         # Parse subject and body, and add/change few others
@@ -139,7 +144,7 @@ class Template(dict):
         """
         if not self.cursor.execute(SQL, message).rowcount:
             raise ValueError(
-                f"Email message queueing failed! (template: '{self['template_id']}', course_id: '{course_id}', recipient uid: '{uid}')"
+                f"Email message queueing failed! (template: '{self['template_id']}', course_id: '{message['course_id']}', recipient uid: '{uid}')"
             )
         message_id = int(self.cursor.fetchone()[0])
 
