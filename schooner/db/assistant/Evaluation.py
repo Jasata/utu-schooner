@@ -27,6 +27,8 @@
 #       )
 #       assistant.evaluation_reject()
 #       assistant.evaluation_cancel()
+from schooner.db.email  import Template
+from schooner.jtd       import JTDSubmission
 
 
 class Evaluation(dict):
@@ -135,9 +137,9 @@ class Evaluation(dict):
 
 
     def reject(self, feedback: str, confidential: str):
-        """TBA"""
+        """Writes .feedback and .confidential. Awards zero points and sets the status as 'rejected'. Returns the time elapsed in evaluation."""
         SQL = """
-            SELECT      assistant.evaluation_reject(
+            SELECT assistant.evaluation_reject(
                 %(uid)s,
                 %(submission_id)s,
                 %(feedback)s,
@@ -150,6 +152,15 @@ class Evaluation(dict):
         ).fetchone()[0]
         self.cursor.connection.commit()
         self.__update()
+        # Send reject message
+        template        = Template(self.cursor, 'EVALUATION_REJECTED')
+        data            = JTDSubmission(self.cursor, self['submission_id'])
+        template.parse_and_queue(
+            data['course_id'],
+            data['enrollee_uid'],
+            **data
+        )
+        self.cursor.connection.commit()
         return elapsed
 
 

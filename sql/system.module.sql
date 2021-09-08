@@ -94,7 +94,7 @@ VALUES ('ADMIN'), ('TEACHER'), ('ASSISTANT');
 \echo '=== system.account'
 CREATE TABLE system.account
 (
-    uid             VARCHAR(10)     NOT NULL,
+    uid             VARCHAR(64)     NOT NULL,
     role_id         VARCHAR(16)     NOT NULL,
     created         TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (uid, role_id),

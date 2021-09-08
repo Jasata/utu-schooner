@@ -21,7 +21,7 @@ CREATE TABLE email.message
 (
     message_id          INTEGER         GENERATED ALWAYS AS IDENTITY,
     course_id           VARCHAR(16)     NULL,
-    uid                 VARCHAR(10)     NULL,
+    uid                 VARCHAR(64)     NULL,
     mimetype            VARCHAR(10)     NOT NULL DEFAULT 'text/plain',
     priority            VARCHAR(6)      NOT NULL DEFAULT 'normal',
     sent_from           VARCHAR(64)     NOT NULL,
@@ -312,6 +312,70 @@ Regards,
 {{ course_code }}
 {{ course_email or "" }}'
 );
+
+INSERT INTO email.template
+(
+    template_id,
+    mimetype,
+    priority,
+    subject,
+    body
+)
+VALUES
+(
+    'EVALUATION_REJECTED',
+    'text/plain',
+     'normal',
+     'Assignment {{ assignment_id }} submission rejected',
+     'Regretfully, your submission (#{{ submission_id }}) to assignment {{ assignment_id }} "{{ assignment_name }}" has been rejected.
+
+{% if submission_feedback -%}
+Evaluator feedback:
+{{ submission_feedback }}
+{% endif -%}
+
+Regards,
+{{ course_code }}
+{{ course_email or "" }}
+'
+);
+
+INSERT INTO email.template
+(
+    template_id,
+    mimetype,
+    priority,
+    subject,
+    body
+)
+VALUES
+(
+    'EVALUATION_ACCEPTED',
+    'text/plain',
+    'normal',
+    'Submission for assignment {{ assignment_id }} has been evaluated.',
+    'Your submission (#{{ submission_id }}) for assignment {{ assignment_id }} "{{ assignment_name }}" has been evaluated.
+
+Submission has been awarded with {{ submission_score }} / {{ assignment_points }} points.
+{% if assignment_pass -%}
+To pass this assignment, {{ assignment_pass }} points are required.
+{% if submission_score >= assignment_pass -%}
+Your submission has passed.
+{% else -%}
+Unfortunately, your submission did not pass.
+{% endif -%}
+{% endif -%}
+
+{% if submission_feedback -%}
+Evaluator feedback:
+{{ submission_feedback }}
+{% endif -%}
+
+Regards,
+{{ course_code }}
+{{ course_email or "" }}'
+);
+
 
 
 \echo '=== email.jtd_*'

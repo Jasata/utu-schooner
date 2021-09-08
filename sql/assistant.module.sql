@@ -19,7 +19,7 @@ GRANT USAGE ON SCHEMA assistant TO schooner_dev;
 CREATE TABLE assistant.assistant
 (
     course_id           VARCHAR(32)     NOT NULL,
-    uid                 VARCHAR(10)     NOT NULL,
+    uid                 VARCHAR(64)     NOT NULL,
     name                VARCHAR(64)     NOT NULL,
     created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status              active_t        NOT NULL DEFAULT 'active',
@@ -165,7 +165,7 @@ Source: https://wiki.postgresql.org/wiki/Pseudo_encrypt';
 \echo '=== assistant.evaluation_begin()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_begin(
-    in_uid              VARCHAR(10),
+    in_uid              VARCHAR,
     in_submission_id    INTEGER
 )
     RETURNS INTEGER
@@ -320,7 +320,7 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_begin TO schooner_dev;
 \echo '=== assistant.evaluation_close()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_close(
-    in_uid              VARCHAR(10),
+    in_uid              VARCHAR,
     in_submission_id    INTEGER,
     in_score            INTEGER,
     in_feedback         TEXT,
@@ -475,7 +475,7 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_close TO schooner_dev;
 \echo '=== assistant.evaluation_reject()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_reject(
-    in_uid              VARCHAR(10),
+    in_uid              VARCHAR,
     in_submission_id    INTEGER,
     in_feedback         TEXT,
     in_confidential     TEXT
@@ -493,31 +493,6 @@ DECLARE
     v_row_count         INTEGER;
     v_closing_datetime  TIMESTAMP := CURRENT_TIMESTAMP;
 BEGIN
-    -- LOCK submission row
---    PERFORM     *
---    FROM        submission
---    WHERE       submission_id = in_submission_id
---    FOR UPDATE;
---    IF NOT FOUND THEN
---        RAISE EXCEPTION
---        'Submission (%) not found!',
---        in_submission_id
---        USING HINT = 'SUBMISSION_NOT_FOUND';
---    END IF;
-    -- LOCK evaluation table
---    PERFORM     *
---    FROM        assistant.evaluation
---    WHERE       uid = in_uid
---    FOR UPDATE;
---    IF NOT FOUND THEN
---        RAISE EXCEPTION
---        'Evaluation record for submission (%) not found!',
---        in_submission_id
---        USING HINT = 'EVALUATION_NOT_FOUND';
- --   END IF;
-    -- Unlike .evaluation_beginning(), this routine does not need to lock the entire table
-    -- LOCK TABLE assistant.evaluation IN ACCESS EXCLUSIVE MODE;
-
     -- Submission must exist and be in 'draft' state
     SELECT      *
     FROM        core.submission
@@ -624,7 +599,7 @@ GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO schooner_dev;
 \echo '=== assistant.evaluation_cancel()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_cancel(
-    in_uid              VARCHAR(10),
+    in_uid              VARCHAR,
     in_submission_id    INTEGER
 )
     RETURNS TIME

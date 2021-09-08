@@ -20,8 +20,10 @@ psql -d schooner -f core.module.sql
 psql -d schooner -f email.module.sql
 psql -d schooner -f assistant.module.sql
 psql -d schooner -f DTEK0068-3002.sql
-printf "${RED}Executing enroller.py${NC}\n"
-../enroller.py --map nettiopsu DTEK0068-3002 csv/DTEK0068-3002.csv
+# Commented out because the attachment files need to be inserted first
+# RUN THIS MANUALLY!
+#printf "${RED}Executing enroller.py${NC}\n"
+#../enroller.py DTEK0068-3002 csv/peppi-2021-09-08.csv
 psql -d schooner -f core.dev_data.sql
 psql -d schooner -f email.dev_data.sql
 psql -d schooner -f assistant.dev_data.sql

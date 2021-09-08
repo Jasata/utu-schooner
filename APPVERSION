@@ -4,6 +4,7 @@
 # APPVERSION - Flask Application Version Number
 #
 #   2021-08-07  Version 0.1.0
+#   2021-09-08  Version 0.2.0, GitHub backend is working
 #
 # This file may contain ONLY one single non-comment line.
 # That row is expected to contain a semantic version string "x.y.z".
@@ -12,4 +13,4 @@
 #
 # 
 
-0.1.0
+0.2.0

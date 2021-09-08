@@ -31,7 +31,7 @@ CREATE TYPE active_t AS ENUM ('active', 'inactive');
 \echo '=== core.admin'
 CREATE TABLE core.admin
 (
-    uid                 VARCHAR(10)     NOT NULL PRIMARY KEY,
+    uid                 VARCHAR(64)     NOT NULL PRIMARY KEY,
     created             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status              active_t        NOT NULL DEFAULT 'active'
 );
@@ -170,7 +170,7 @@ COMMENT ON COLUMN core.course.description IS
 CREATE TABLE core.enrollee
 (
     course_id           VARCHAR(16)     NOT NULL,
-    uid                 VARCHAR(10)     NOT NULL,
+    uid                 VARCHAR(64)     NOT NULL,
     studentid           VARCHAR(32)     NOT NULL,
     lastname            VARCHAR(32)     NOT NULL,
     firstname           VARCHAR(32)     NOT NULL,
@@ -352,7 +352,7 @@ CREATE TABLE core.submission
     submission_id       INTEGER         GENERATED ALWAYS AS IDENTITY,
     assignment_id       VARCHAR(16)     NOT NULL,
     course_id           VARCHAR(16)     NOT NULL,
-    uid                 VARCHAR(10)     NOT NULL,
+    uid                 VARCHAR(64)     NOT NULL,
     content             VARCHAR(255)    NOT NULL,
     submitted           TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     accepted            TIMESTAMP       NULL,
@@ -641,12 +641,12 @@ GRANT EXECUTE ON FUNCTION core.submission_last_retrieval_date TO schooner_dev;
 \echo '=== core.enrol()'
 CREATE OR REPLACE PROCEDURE
 core.enrol(
-    in_course_id            VARCHAR(16),
-    in_uid                  VARCHAR(10),
-    in_student_id           VARCHAR(32),
-    in_email                VARCHAR(64),
-    in_lastname             VARCHAR(32),
-    in_firstname            VARCHAR(32),
+    in_course_id            VARCHAR,
+    in_uid                  VARCHAR,
+    in_student_id           VARCHAR,
+    in_email                VARCHAR,
+    in_lastname             VARCHAR,
+    in_firstname            VARCHAR,
     in_update_existing      BOOLEAN DEFAULT FALSE
 )
     LANGUAGE PLPGSQL

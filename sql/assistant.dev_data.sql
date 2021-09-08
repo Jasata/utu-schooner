@@ -26,30 +26,5 @@ VALUES
     'Tuisku Polvinen'
 );
 
-DO $$
-DECLARE
-    v_submission_id     INTEGER;
-BEGIN
-    INSERT INTO core.submission
-    (
-        assignment_id,
-        course_id,
-        uid,
-        content
-    )
-    VALUES
-    (
-        'E02',
-        'DTEK0068-3002',
-        'jasata',
-        'Prööt prööt'
-    )
-    RETURNING   submission_id
-    INTO        v_submission_id;
-    PERFORM     assistant.evaluation_begin('jasata', v_submission_id);
-END;
-$$;
-
-
 
 -- EOF

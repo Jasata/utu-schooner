@@ -23,8 +23,6 @@
 #   Most of actual work is implemented in the API modules.
 #
 import os
-from schooner.db.assistant.Evaluation import Evaluation
-from schooner.db import assistant
 import sys
 import time
 import json
@@ -847,7 +845,7 @@ def assistant_evaluation():
 
 
 @app.route('/assistant_evaluation_begin.html', methods=['POST'])
-def assistant_start_evaluation_get():
+def assistant_evaluation_begin():
     from schooner.db.core       import Submission
     from schooner.db.assistant  import CourseAssistant
     from schooner.db.assistant  import Evaluation
@@ -930,12 +928,58 @@ def assistant_evaluation_cancel():
 
 @app.route('/assistant_evaluation_reject.html', methods=['POST'])
 def assistant_evaluation_reject():
-    return flask.render_template(
-        'internal_error.jinja',
-        title = "Not yet implemented",
-        message = "Not yet implemented"
-    )
-
+    from schooner.db.assistant import Evaluation
+    # Required POST parameter(s):
+    #   sid : int           submission.submission_id
+    #   feedback : str      submission.feedback
+    #   confidential : str  submission.confidential
+    #   sso.uid             submission.evaluator
+    requiredkeys = ["sid", "feedback", "confidential"]
+    try:
+        if not sso.is_authenticated:
+            raise Exception("Must be authenticated to access this view")
+        # process FORM data
+        issues = []
+        data = request.form.to_dict(flat = True)
+        for key in requiredkeys:
+            if key not in data:
+                issues.append(
+                    f"Form does not contain key '{key}'"
+                )
+        if issues:
+            raise ValueError(
+                f"Malformed POST data: {', '.join(issues)}: {str(data)}"
+            )
+    except Exception as e:
+        app.logger.exception(f"FORM argument check(s) failed! {str(e)}")
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
+        )
+    # Application logic
+    try:
+        # The following will raise ValueError if uid and submission_id do not match
+        try:
+            task = Evaluation(g.db.cursor(), data['sid'])
+        except ValueError:
+            raise Exception(f"You are not registered as an assistant for the course in which submission #{data['sid']} belongs to!") from None
+        if task['ended']:
+            raise Exception(f"Evaluation of submission #{data['sid']} has been completed and cannot be cancelled!")
+        # Checks are done, cancel
+        elapsed = task.reject(data['feedback'], data['confidential'])
+        app.logger.debug(
+            f"Submission #{task['submission_id']} REJECTED after {elapsed} of evaluating."
+        )
+        # Redirect to workqueue page
+        return flask.redirect(f"/assistant_workqueue.html?cid={task['course_id']}")
+    except Exception as e:
+        app.logger.exception(str(e))
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Internal Error",
+            message = str(e)
+        )
 
 
 

@@ -14,6 +14,7 @@
 #               moved back to the project root.
 #   2021-08-31  Supports CSV column mapping to process different exports.
 #   2021-09-05  Minor fix for calling JTDTemplate.parse_and_queue().
+#   2021-09-08  Updated for changed Peppi export layout... again.
 #
 #   IMPORTANT
 # -----------------------------------------------------------------------------
@@ -112,7 +113,7 @@ config = DefaultDotDict(
 
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
-__version__     = "0.4.1 (2021-09-05)"
+__version__     = "0.4.2 (2021-09-08)"
 __authors__     = "Jani Tammi <jasata@utu.fi>"
 VERSION         = __version__
 HEADER          = f"""
@@ -143,7 +144,7 @@ class EnrollArguments(dict):
 
     maps = {
         'peppi' : {
-            'uid' : 5, 'studentid' : 4, 'email' : 3, 'lastname' : 0, 'firstname' : 1
+            'uid' : 4, 'studentid' : 7, 'email' : 5, 'lastname' : 1, 'firstname' : 2
         },
         'nettiopsu' : {
             'uid' : 4, 'studentid' : 0, 'email' : 3, 'lastname' : 1, 'firstname' : 2
@@ -368,6 +369,8 @@ if __name__ == '__main__':
     except PermissionError:
         print(f"Unable to write to '{config.logfile}'!")
         os._exit(-1)
+    else:
+        os.chmod(config.logfile, 0o664)
     # DB log Handler
     handler = LogDBHandler(config.database, level = config.loglevel)
     log.addHandler(handler)
