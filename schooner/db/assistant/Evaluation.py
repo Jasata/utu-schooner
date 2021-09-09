@@ -131,6 +131,15 @@ class Evaluation(dict):
         ).fetchone()[0]
         self.cursor.connection.commit()
         self.__update()
+        # Send reject message
+        template        = Template(self.cursor, 'EVALUATION_ACCEPTED')
+        data            = JTDSubmission(self.cursor, self['submission_id'])
+        template.parse_and_queue(
+            data['course_id'],
+            data['enrollee_uid'],
+            **data
+        )
+        self.cursor.connection.commit()
         return elapsed
 
 

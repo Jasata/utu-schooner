@@ -230,113 +230,17 @@ class SQLiteScript(File):
         super().sort(key=lambda k : k[key])
 
 
-
-from schooner.db.core   import EnrolleeList
-from schooner.db.core   import AssignmentList
-from schooner.db.core   import CourseList
-
-import datetime
-
-
 if __name__ == '__main__':
 
     with psycopg.connect(f"dbname=schooner").cursor() as cursor:
-        """
-        course_list = CourseList(
-            cursor,
-#            handlers = ['HUBBOT', 'HUBREG', 'BOGUS'],
-#            opens = '2021-08-25 00:00:00'
-            opens = datetime.datetime(2021, 8, 25, 0, 0, 0, 0)
-#            github_account = 'DTEK0068'
-        )
-        
-        print("Found", len(course_list), "matching courses:")
-        course_list.sort('course_id')
-        for c in course_list:
-            print(c['course_id'], c['opens'])
 
+        #from schooner.jtd import JTDAssignment
+        #jtd = JTDAssignment(cursor, 'DTEK0000-3002', 'E01', 'jasata')
+        #print(jtd)
 
-        my_courses = EnrolleeList(
-            cursor, course_id = 'DTEK0000-3002'
-        )
-        my_courses.sort('uid')
-        print("Total of", len(my_courses), "enrollments:")
-        for row in my_courses:
-            print(row['course_id'], row['uid'])
-
-
-        al = AssignmentList(cursor, course_id = 'DTEK0068-3002')
-        al.sort("deadline")
-        for a in al:
-            print(a['assignment_id'], a['name'], a['deadline'])
-
-        cl = CourseList(cursor, uid = 'jasata')
-        for c in cl:
-            print(c['code'], c['name'])
-        """
-
-        """
-        print("=== Courses for assistant jasata")
-        cl = AssistantList(cursor, uid = 'jasata')
-        for c in cl:
-            for k, v in c.items():
-                print(k, "=", v)
-
-        from schooner.api       import AssistantWorkqueue
-        q = AssistantWorkqueue(cursor, 'jasata', course_id = 'DTEK0068-3002')
-        for s in q:
-            for k, v in s.items():
-                print(k, "=", v)
-        """
-
-
-        """ 
-        class SkipIt(Exception):
-            pass
-        from schooner.api import GitAssignments
-        assignments = GitAssignments(cursor)
-        for a in assignments:
-            print("Assignment ", a['course_id'], a['assignment_id'])
-            for s in assignments.submissions(**a):
-                try:
-                    print("\t", s)
-                    if s['draft_submission_id']:
-                        raise SkipIt("Draft exists!")
-                    if s['accepted_submission_id']:
-                        raise SkipIt("Already accepted!")
-                    if a['retries']:
-                        if a['retries'] < s['n_submissions']:
-                            raise SkipIt("Max retries exhausted!")
-                    if s['status'] != 'active':
-                        raise SkipIt("Student no longer active on this course!")
-                    print("\tAttempting to fetch repo...")
-                except SkipIt as e:
-                    # Emit messages ONLY in debug mode here
-                    print("\tCOMPLAINT DEPARTMENT:", str(e))
-                    pass
-        """
-
-        from schooner.jtd import JTDAssignment
-        jtd = JTDAssignment(cursor, 'DTEK0000-3002', 'E01', 'jasata')
+        from schooner.jtd import JTDSubmission
+        jtd = JTDSubmission(cursor, 9)
         print(jtd)
-
-    """
-    # Why does this print root keys twice?
-    from schooner.util import AppConfig
-    allCfg = AppConfig("cron.job/app.conf")
-    for k, v in allCfg.items():
-        if isinstance(v, dict):
-            for k2, v2 in v.items():
-                print(f"{k}.{k2} = {v2}")
-        else:
-            print(f"{k} = {v}")
-        for k, v in cfg.items():
-            print(k, "=", v)
-
-    for k in allCfg.keys():
-        print("KEY", k)
-    """
-
 
 
 # EOF

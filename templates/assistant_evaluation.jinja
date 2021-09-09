@@ -10,8 +10,44 @@
 #}
 
 {% block content %}
+<style>
+details > summary {
+    font-size:          1.2em;
+    font-weight:        bold;
+}
+table.details tbody tr td:nth-child(1) {
+    padding-left:       40px;
+    padding-right:      10px;
+    font-weight:        bold;
+}
+table.details tbody tr td:nth-child(2) {
+    padding-left:       10px;
+}
+#points {
+    width:              60px;
+    background-color:   transparent;
+    color:              Black;
+    outline:            none;
+    outline-style:      none;
+    border-top:         none;
+    border-left:        none;
+    border-right:       none;
+    border-bottom:      solid #333333 1px;
+    padding:            3px 10px;
+}
+</style>
 <script>
     function acceptSubmission(form) {
+        console.log(form.points.value)
+        console.log({{ submission['assignment_max_points'] }})
+        if (!form.points.value) {
+            alert("No points have been given!")
+            return false
+        }
+        if (form.points.value > {{ submission['assignment_max_points'] }}) {
+            alert("Awarded points cannot exceed assignment maximum!")
+            return false
+        }
         if (!window.confirm("Are you sure?")) {
             return false
         }
@@ -41,44 +77,80 @@
 </script>
     <h2>Submission Evaluation</h2>
     <details>
-        <summary><b>Course</b></summary>
-        <table>
+        <summary>Course</summary>
+        <table class="details">
         <tr>
-            <td>Code and Name</td>
+            <td>Code and Name:</td>
             <td>{{ submission['course_code'] }} {{ submission['course_name'] }}</td>
         </tr>
         <tr>
-            <td>Start and End</td>
-            <td>{{ submission['course_opens'] }} - {{ submission['course_closes'] or "" }}</td>
+            <td>Course Duration:</td>
+            <td>{{ submission['course_opens'].strftime('%Y-%m-%d') }} - {% if  submission['course_closes'] -%}{{ submission['course_closes'].strftime('%Y-%m-%d') }}{% else -%}(unspecified){% endif -%}</td>
         </tr>
         </table>
     </details>
     <details>
-        <summary><b>Assignment</b></summary>
-        <table>
+        <summary>Assignment</summary>
+        <table class="details">
         <tr>
-            <td>ID and Name</td>
+            <td>ID and Name:</td>
             <td>{{ submission['assignment_id'] }} {{ submission['assignment_name'] }}</td>
         </tr>
         <tr>
-            <td>Maximum points</td>
+            <td>Maximum points:</td>
             <td>{{ submission['assignment_max_points'] }}</td>
         </tr>
         <tr>
-            <td>Poits required to pass</td>
+            <td>Poits required to pass:</td>
             <td>{{ submission['assignment_points_to_pass'] }}</td>
         </tr>
         <tr>
-            <td>Allowed retries</td>
+            <td>Allowed retries:</td>
             <td>{{ submission['assignment_retries'] or "(unlimited)" }}</td>
         </tr>
         <tr>
-            <td>Deadline</td>
+            <td>Deadline:</td>
             <td>{{ submission['assignment_deadline'] or "(unrestricted)" }}</td>
         </tr>
         <tr>
-            <td>Scoring submission</td>
+            <td>Scoring submission:</td>
             <td>{{ submission['assignment_evaluation'] }} submission</td>
+        </tr>
+        <tr>
+            <td colspan="2">Assignment Description:</td>
+        </tr>
+        <tr>
+            <td colspan="2" style="font-weight: normal;">{{ submission['assignment_description'] }}
+        </tr>
+        </table>
+    </details>
+    <details>
+        <summary>Submission</summary>
+        <table class="details">
+        <tr>
+            <td>Submission ID:</td>
+            <td>{{ submission['submission_id'] }}</td>
+        </tr>
+        <tr>
+            <td>Submitted:</td>
+            <td>{{ submission['submitted'].strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        </tr>
+        </table>
+    </details>
+    <details>
+        <summary>Student</summary>
+        <table class="details">
+        <tr>
+            <td>Name:</td>
+            <td>{{ submission['enrollee_lastname'] }}, {{ submission['enrollee_firstname'] }}</td>
+        </tr>
+        <tr>
+            <td>Email:</td>
+            <td>{{ submission['enrollee_email'] }}</td>
+        </tr>
+        <tr>
+            <td>Student ID:</td>
+            <td>{{ submission['enrollee_studentid'] }}</td>
         </tr>
         </table>
     </details>
@@ -87,16 +159,17 @@
     <input type="hidden" name="sid" value="{{ submission['submission_id'] }}">
     <table>
         <tr style="background: silver;">
-            <th>Submission #{{ submission['submission_id'] }} by {{ submission['enrollee_lastname'] }}, {{ submission['enrollee_firstname'] }} ({{ submission['submitted'].strftime('%Y-%m-%d %H:%M:%S') }})</td>
+            <th colspan="2">Submission #{{ submission['submission_id'] }} by {{ submission['enrollee_lastname'] }}, {{ submission['enrollee_firstname'] }} ({{ submission['submitted'].strftime('%Y-%m-%d %H:%M:%S') }})</td>
         </tr>
         <tr>
-            <td><b>Feedback</b><br><textarea id="feedback" name="feedback" rows="20" cols="100"></textarea></td>
+            <td><input name="points" type="text" id="points">&nbsp;/&nbsp;{{ submission['assignment_max_points'] }}&nbsp;Points&nbsp;<input type="button" onclick="return acceptSubmission(this.form)" value="Accept and Close Evaluation"></td>
+            <td style="text-align: right;"><input type="button" onclick="return rejectSubmission(this.form)" value="Reject Submission">&nbsp;<input type="button" onclick="return cancelEvaluation(this.form)" value="Cancel Evaluation"></td>
         </tr>
         <tr>
-            <td><b>Confidential Notes:</b> (not sent to student)<br><textarea id="confidential" name="confidential" rows="4" cols="100"></textarea></td>
+            <td colspan="2"><b>Feedback</b><br><textarea id="feedback" name="feedback" rows="20" cols="100"></textarea></td>
         </tr>
         <tr>
-            <td style="align: right;"><input type="button" onclick="return acceptSubmission(this.form)" value="Accept and Close Evaluation">&nbsp;<input type="button" onclick="return rejectSubmission(this.form)" value="Reject Submission">&nbsp;<input type="button" onclick="return cancelEvaluation(this.form)" value="Cancel Evaluation"></td>
+            <td colspan="2"><b>Confidential Notes:</b> (not sent to student)<br><textarea id="confidential" name="confidential" rows="4" cols="100"></textarea></td>
         </tr>
     </table>
     </form>

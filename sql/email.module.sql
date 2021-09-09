@@ -332,7 +332,8 @@ VALUES
 {% if submission_feedback -%}
 Evaluator feedback:
 {{ submission_feedback }}
-{% endif -%}
+{% endif %}
+
 
 Regards,
 {{ course_code }}
@@ -356,24 +357,23 @@ VALUES
     'Submission for assignment {{ assignment_id }} has been evaluated.',
     'Your submission (#{{ submission_id }}) for assignment {{ assignment_id }} "{{ assignment_name }}" has been evaluated.
 
-Submission has been awarded with {{ submission_score }} / {{ assignment_points }} points.
+Submission has been awarded with {{ submission_score }} / {{ assignment_max_score }} points.
 {% if assignment_pass -%}
 To pass this assignment, {{ assignment_pass }} points are required.
 {% if submission_score >= assignment_pass -%}
-Your submission has passed.
-{% else -%}
-Unfortunately, your submission did not pass.
-{% endif -%}
-{% endif -%}
+Your submission has passed.{% else -%}Unfortunately, your submission did not pass.
+{% endif %}{% endif %}
 
 {% if submission_feedback -%}
 Evaluator feedback:
 {{ submission_feedback }}
-{% endif -%}
+{% endif %}
+
 
 Regards,
 {{ course_code }}
-{{ course_email or "" }}'
+{{ course_email or "" }}
+'
 );
 
 

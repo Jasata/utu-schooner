@@ -985,11 +985,69 @@ def assistant_evaluation_reject():
 
 @app.route('/assistant_evaluation_accept.html', methods=['POST'])
 def assistant_evaluation_accept():
-    return flask.render_template(
-        'internal_error.jinja',
-        title = "Not yet implemented",
-        message = "Not yet implemented"
-    )
+    from schooner.db.assistant import Evaluation
+    # Required POST parameter(s):
+    #   sid : int           submission.submission_id
+    #   feedback : str      submission.feedback
+    #   confidential : str  submission.confidential
+    #   points : int        submission.score
+    #   sso.uid             submission.evaluator
+    requiredkeys = ["sid", "feedback", "confidential", "points"]
+    try:
+        if not sso.is_authenticated:
+            raise Exception("Must be authenticated to access this view")
+        # process FORM data
+        issues = []
+        data = request.form.to_dict(flat = True)
+        for key in requiredkeys:
+            if key not in data:
+                issues.append(
+                    f"Form does not contain key '{key}'"
+                )
+        if issues:
+            raise ValueError(
+                f"Malformed POST data: {', '.join(issues)}: {str(data)}"
+            )
+    except Exception as e:
+        app.logger.exception(f"FORM argument check(s) failed! {str(e)}")
+        return flask.render_template(
+            "internal_error.jinja",
+            title = "Internal Error",
+            message = str(e)
+        )
+    # Application logic
+    try:
+        # Check the validity of 'sid'
+        try:
+            task = Evaluation(g.db.cursor(), data['sid'])
+        except:
+            raise Exception(
+                f"Specified submission (#{data['sid']}) not found!"
+            ) from None
+        if task['ended']:
+            raise Exception(f"Evaluation of submission #{data['sid']} has been completed and cannot be cancelled!")
+        if task['uid'] != sso.uid:
+            raise Exception(
+                f"Submission (#{data['sid']}) is under evaluation by '{task['uid']}'!"
+            )
+        # Checks are done, cancel
+        elapsed = task.accept(
+            data['points'],
+            data['feedback'],
+            data['confidential']
+        )
+        app.logger.debug(
+            f"Submission #{task['submission_id']} ACCEPTED after {elapsed} of evaluating."
+        )
+        # Redirect to workqueue page
+        return flask.redirect(f"/assistant_workqueue.html?cid={task['course_id']}")
+    except Exception as e:
+        app.logger.exception(str(e))
+        return flask.render_template(
+            'internal_error.jinja',
+            title = "Internal Error",
+            message = str(e)
+        )
 
 
 
