@@ -913,8 +913,17 @@ def assistant_evaluation_cancel():
             raise Exception(f"Evaluation of submission #{sid} has been completed and cannot be cancelled!")
         # Checks are done, cancel
         task.cancel()
-        # Redirect to workqueue page
-        return flask.redirect(f"/assistant_workqueue.html?cid={task['course_id']}")
+        #
+        # Call upon the local agent to remove the project directory
+        #
+        from urllib.parse import quote
+        URL = "http://localhost:8080/remove?sid={}&redirect={}".format(
+            sid,
+            quote(f"https://schooner.utu.fi/assistant_workqueue.html?cid={task['course_id']}")
+        )
+        return flask.redirect(URL)
+        # OLD which did not call the local agent
+        #return flask.redirect(f"/assistant_workqueue.html?cid={task['course_id']}")
     except Exception as e:
         app.logger.exception(str(e))
         return flask.render_template(
@@ -971,8 +980,17 @@ def assistant_evaluation_reject():
         app.logger.debug(
             f"Submission #{task['submission_id']} REJECTED after {elapsed} of evaluating."
         )
+        #
+        # Call upon the local agent to remove the project directory
+        #
+        from urllib.parse import quote
+        URL = "http://localhost:8080/remove?sid={}&redirect={}".format(
+            data['sid'],
+            quote(f"https://schooner.utu.fi/assistant_workqueue.html?cid={task['course_id']}")
+        )
+        return flask.redirect(URL)
         # Redirect to workqueue page
-        return flask.redirect(f"/assistant_workqueue.html?cid={task['course_id']}")
+        #return flask.redirect(f"/assistant_workqueue.html?cid={task['course_id']}")
     except Exception as e:
         app.logger.exception(str(e))
         return flask.render_template(
@@ -1039,8 +1057,19 @@ def assistant_evaluation_accept():
         app.logger.debug(
             f"Submission #{task['submission_id']} ACCEPTED after {elapsed} of evaluating."
         )
+        #
+        # Call upon the local agent to remove the project directory
+        #
+        from urllib.parse import quote
+        URL = "http://localhost:8080/remove?sid={}&redirect={}".format(
+            data['sid'],
+            quote(f"https://schooner.utu.fi/assistant_workqueue.html?cid={task['course_id']}")
+        )
+        return flask.redirect(URL)
         # Redirect to workqueue page
-        return flask.redirect(f"/assistant_workqueue.html?cid={task['course_id']}")
+        #return flask.redirect(
+        #    f"/assistant_workqueue.html?cid={task['course_id']}"
+        #)
     except Exception as e:
         app.logger.exception(str(e))
         return flask.render_template(
@@ -1067,17 +1096,29 @@ def exercise_get():
                 "Access token required and cannot be empty!"
             )
         # Create archive of the exercise
-        archive = ExerciseArchive(g.db.cursor(), token)
-        tmpfile = archive.create()
+        #archive = ExerciseArchive(g.db.cursor(), token)
+        #tmpfile = archive.create()
 
         # As of August 2012, the MIME type recommended in RFC 6713
         # is 'application/gzip'
-        return flask.send_file(
-            tmpfile,
-            as_attachment=True,
-            mimetype='application/gzip'
-        )
+        # return flask.send_file(
+        #     tmpfile,
+        #     as_attachment=True,
+        #     mimetype='application/gzip'
+        # )
         #return (f"Access: {tmpfile}", 200)
+        """
+        response = flask.make_response(
+            flask.send_file(
+                tmpfile,
+                as_attachment=True,
+                mimetype='application/gzip'
+            )
+        )
+        response.headers['X-SubmissionID'] = archive.submission_id
+        return response
+        """
+        return ExerciseArchive(g.db.cursor(), token).send()
     except KeyError as e:
         app.logger.exception(str(e))
         return ("URI parameter 'token' required!", 400)

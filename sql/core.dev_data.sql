@@ -37,6 +37,19 @@ VALUES
 );
 
 INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty,
+    evaluation
+)
 VALUES
 (
     'T01',

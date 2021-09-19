@@ -1,0 +1,82 @@
+[
+    {
+        'name': '.gitignore',
+        'path': '.gitignore',
+        'sha': 'c6127b38c1aa25968a88db3940604d41529e4cf5',
+        'size': 430,
+        'url': 'https://api.github.com/repos/Jasata/DTE20068/contents/.gitignore?ref=main',
+        'html_url': 'https://github.com/Jasata/DTE20068/blob/main/.gitignore',
+        'git_url': 'https://api.github.com/repos/Jasata/DTE20068/git/blobs/c6127b38c1aa25968a88db3940604d41529e4cf5',
+        'download_url': 'https://raw.githubusercontent.com/Jasata/DTE20068/main/.gitignore?token=AVFXW2GQFP4V6H3DEWMGKRLBHNWY4',
+        'type': 'file',
+        '_links': {
+            'self': 'https://api.github.com/repos/Jasata/DTE20068/contents/.gitignore?ref=main',
+            'git': 'https://api.github.com/repos/Jasata/DTE20068/git/blobs/c6127b38c1aa25968a88db3940604d41529e4cf5',
+            'html': 'https://github.com/Jasata/DTE20068/blob/main/.gitignore'
+        }
+    },
+    {
+        'name': 'E01',
+        'path': 'E01',
+        'sha': '9917fdf55e463081771cef72de562aa6fce4f48f',
+        'size': 0,
+        'url': 'https://api.github.com/repos/Jasata/DTE20068/contents/E01?ref=main',
+        'html_url': 'https://github.com/Jasata/DTE20068/tree/main/E01',
+        'git_url': 'https://api.github.com/repos/Jasata/DTE20068/git/trees/9917fdf55e463081771cef72de562aa6fce4f48f',
+        'download_url': None,
+        'type': 'dir',
+        '_links': {
+            'self': 'https://api.github.com/repos/Jasata/DTE20068/contents/E01?ref=main',
+            'git': 'https://api.github.com/repos/Jasata/DTE20068/git/trees/9917fdf55e463081771cef72de562aa6fce4f48f',
+            'html': 'https://github.com/Jasata/DTE20068/tree/main/E01'
+        }
+    },
+    {
+        'name': 'README.md',
+        'path': 'README.md',
+        'sha': '665c6cf2143544cf546975d8c47f77da02837a69',
+        'size': 96,
+        'url': 'https://api.github.com/repos/Jasata/DTE20068/contents/README.md?ref=main',
+        'html_url': 'https://github.com/Jasata/DTE20068/blob/main/README.md',
+        'git_url': 'https://api.github.com/repos/Jasata/DTE20068/git/blobs/665c6cf2143544cf546975d8c47f77da02837a69',
+        'download_url': 'https://raw.githubusercontent.com/Jasata/DTE20068/main/README.md?token=AVFXW2GZZPQMKWBQXEUPTGDBHNWY4',
+        'type': 'file',
+        '_links': {
+            'self': 'https://api.github.com/repos/Jasata/DTE20068/contents/README.md?ref=main',
+            'git': 'https://api.github.com/repos/Jasata/DTE20068/git/blobs/665c6cf2143544cf546975d8c47f77da02837a69',
+            'html': 'https://github.com/Jasata/DTE20068/blob/main/README.md'
+        }
+    },
+    {
+        'name': 'week1',
+        'path': 'week1',
+        'sha': 'ca6d8afe796ff3c1728deaca96777e90e136907a',
+        'size': 0,
+        'url': 'https://api.github.com/repos/Jasata/DTE20068/contents/week1?ref=main',
+        'html_url': 'https://github.com/Jasata/DTE20068/tree/main/week1',
+        'git_url': 'https://api.github.com/repos/Jasata/DTE20068/git/trees/ca6d8afe796ff3c1728deaca96777e90e136907a',
+        'download_url': None,
+        'type': 'dir',
+        '_links': {
+            'self': 'https://api.github.com/repos/Jasata/DTE20068/contents/week1?ref=main',
+            'git': 'https://api.github.com/repos/Jasata/DTE20068/git/trees/ca6d8afe796ff3c1728deaca96777e90e136907a',
+            'html': 'https://github.com/Jasata/DTE20068/tree/main/week1'
+        }
+    },
+    {
+        'name': 'week2.incomplete',
+        'path': 'week2.incomplete',
+        'sha': '2d125f32bff0ad580633d54b7432e086d8de74ce',
+        'size': 0,
+        'url': 'https://api.github.com/repos/Jasata/DTE20068/contents/week2.incomplete?ref=main',
+        'html_url': 'https://github.com/Jasata/DTE20068/tree/main/week2.incomplete',
+        'git_url': 'https://api.github.com/repos/Jasata/DTE20068/git/trees/2d125f32bff0ad580633d54b7432e086d8de74ce',
+        'download_url': None,
+        'type': 'dir',
+        '_links': {
+            'self': 'https://api.github.com/repos/Jasata/DTE20068/contents/week2.incomplete?ref=main',
+            'git': 'https://api.github.com/repos/Jasata/DTE20068/git/trees/2d125f32bff0ad580633d54b7432e086d8de74ce',
+            'html': 'https://github.com/Jasata/DTE20068/tree/main/week2.incomplete'
+        }
+    }
+]

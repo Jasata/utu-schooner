@@ -10,6 +10,7 @@
 #   2021-08-30  (JTa) Now uses schooner package.
 #   2021-09-05  (JTa) Chanced Git registration call from PendingGitHubRegistrations
 #               into GitRegistration.register_repository()
+#   2021-09-18  (JTa) Increased the indent of a block at line 166.
 #
 # 
 # PROCESS 
@@ -163,17 +164,17 @@ if __name__ == '__main__':
                                     reg['student_repository']
                                 )
 
-                    # TODO: handle possible cases where an invitation has
-                    #       already been accepted in github 
-                    if not reg['invite_matched']:
-                        if requests.get(repo_url, headers=headers).status_code == 200:
-                            log.warning(
-                                "Repository found but invite already accepted in GitHub"
-                            )
-                        else:
-                            log.debug(
-                                f"GitHub invitation matching {reg['student_account']} not found"
-                            )
+                        # TODO: handle possible cases where an invitation has
+                        #       already been accepted in github 
+                        if not reg['invite_matched']:
+                            if requests.get(repo_url, headers=headers).status_code == 200:
+                                log.warning(
+                                    "Repository found but invite already accepted in GitHub"
+                                )
+                            else:
+                                log.debug(
+                                    f"GitHub invitation matching {reg['student_account']} not found"
+                                )
 
                 except Exception as e:
                     log.exception(f"Script execution error! {str(e)}")

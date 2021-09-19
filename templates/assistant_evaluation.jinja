@@ -48,6 +48,10 @@ table.details tbody tr td:nth-child(2) {
             alert("Awarded points cannot exceed assignment maximum!")
             return false
         }
+        if (form.points.value < 0) {
+            alert("Awarded points cannot be less than zero!")
+            return false
+        }
         if (!window.confirm("Are you sure?")) {
             return false
         }
@@ -154,7 +158,6 @@ table.details tbody tr td:nth-child(2) {
         </tr>
         </table>
     </details>
-    <p>&nbsp;</p>
     <form action="#" method="post">
     <input type="hidden" name="sid" value="{{ submission['submission_id'] }}">
     <table>

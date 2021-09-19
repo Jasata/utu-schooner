@@ -197,7 +197,7 @@ if __name__ == '__main__':
     timer = Timer()
     #
     # Change working directory to script's directory
-    # PLace for conf and log files...
+    # Place for conf and log files...
     #
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
 

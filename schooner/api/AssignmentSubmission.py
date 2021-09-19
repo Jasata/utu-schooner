@@ -9,6 +9,8 @@
 #   2021-09-07  Initial version.
 #
 #
+# (2021-09-18)  Used currently in assistant's submission evaluation view,
+#               in '/assistant_evaluation.html', assistant_evaluation().
 #
 
 

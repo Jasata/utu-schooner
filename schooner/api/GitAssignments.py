@@ -7,6 +7,8 @@
 #
 # GitAssignments.py - Data dictionary class for assistant.assistant
 #   2021-09-07  Initial version.
+#   2021-09-18  Assignment WHERE clause modified for NULL deadline.
+#               Fixed date range conditions
 #
 #
 # Enrollees for whom a repository fetch CAN be made for are those that must NOT have...
@@ -15,9 +17,15 @@
 #   3)  SUM() must be < .retries + 1# Consider this more "proper" data object than "Assistant"
 #
 #
+# NOTE: Used only by gitbot.py and hubbot.py (2021-09-18)
+#
 
 
 class GitAssignments(list):
+
+    # HUBBOT assignments which have passed their deadlines by one day
+    # ...OR have a soft deadline and have not passed that more than one day
+    # ("one day" because all fetches take AFTER midnight, on the next day)
     SQL = """
         SELECT      assignment.assignment_id,
                     assignment.course_id,
@@ -27,9 +35,15 @@ class GitAssignments(list):
         FROM        core.assignment
         WHERE       assignment.handler = 'HUBBOT'
                     AND
-                    deadline < CURRENT_DATE
-                    AND
-                    core.submission_last_retrieval_date(assignment.deadline, assignment.latepenalty) > CURRENT_DATE + 1
+                    (
+                        deadline IS NULL
+                        OR
+                        (
+                            deadline < CURRENT_DATE
+                            AND
+                            core.submission_last_retrieval_date(assignment.deadline, assignment.latepenalty) >= CURRENT_DATE
+                        )
+                    )
     """
 
 

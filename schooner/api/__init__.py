@@ -3,7 +3,8 @@ __all__ = [
     "GitRegistration",
     "AssistantWorkqueue",
     "PendingGitHubRegistrations",
-    "AssignmentSubmission"
+    "AssignmentSubmission",
+    "GitAssignments"
 ]
 
 from .ExerciseArchive       import ExerciseArchive

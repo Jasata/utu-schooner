@@ -251,12 +251,14 @@ CREATE TABLE core.assignment
     assignment_id       VARCHAR(16)     NOT NULL,
     course_id           VARCHAR(16)     NOT NULL,
     name                VARCHAR(64)     NOT NULL,
-    description         VARCHAR(5000)   NULL,
+    description         TEXT            NULL,
     handler             VARCHAR(8)      NULL,
+    directives          TEXT            NULL,
     points              INTEGER         NOT NULL,
     pass                INTEGER         NULL,
     retries             INTEGER         NULL DEFAULT 0,
-    deadline            DATE            NOT NULL,
+    opens               TIMESTAMP       NULL,
+    deadline            DATE            NULL,
     latepenalty         DECIMAL(3,3)    NULL,
     evaluation          VARCHAR(8)      NOT NULL DEFAULT 'best',
     PRIMARY KEY (assignment_id, course_id),
@@ -288,12 +290,16 @@ COMMENT ON COLUMN core.assignment.name IS
 'Name of the assignment as it appears in the Moodle course description.';
 COMMENT ON COLUMN core.assignment.handler IS
 'NULL if submissions for this assignment are manually recorded. Otherwise, the code of the appropriate automation service (see "handler" table).';
+COMMENT ON COLUMN core.assignment.directives IS
+'Application specific instructions on how to handle the assignment. For example, HUBBOT handled assignments will read a directory matching pattern from this column.';
 COMMENT ON COLUMN core.assignment.points IS
 'Maximum points that can be earned from the assignment.';
 COMMENT ON COLUMN core.assignment.pass IS
 'Minimum points to pass the assignment. Zero if any submission will do and NULL if the assignment is optional.';
 COMMENT ON COLUMN core.assignment.retries IS
 'Number of allowed retries after the first submission. Zero means no retries (only one submission allowed). NULL means unlimited.';
+COMMENT ON COLUMN core.assignment.opens IS
+'Submissions are open from this date. If NULL, course.opens is used.';
 COMMENT ON COLUMN core.assignment.deadline IS
 'NOTE: Current implementation ignores time part. Date during which the assignment must be submitted.';
 COMMENT ON COLUMN core.assignment.latepenalty IS
@@ -506,6 +512,8 @@ COMMENT ON TRIGGER submission_bri ON core.submission IS
 'Trigger limits the number of submissions based on assignment.retries (NULL = unlimited). It also prevents inserting new submissions if ''draft'' exists. They must be evaluated into ''acceted'' or ''rejected'' before new can be entered.';
 
 
+
+
 CREATE OR REPLACE PROCEDURE
 core.register_github(
     in_submission_id        INTEGER,
@@ -567,6 +575,9 @@ END;
 $$;
 GRANT EXECUTE ON PROCEDURE core.register_github TO "www-data";
 GRANT EXECUTE ON PROCEDURE core.register_github TO schooner_dev;
+
+
+
 
 \echo '=== core.submission_adjusted_score()'
 CREATE OR REPLACE FUNCTION
@@ -633,8 +644,10 @@ BEGIN
     );
 END;
 $$;
-GRANT EXECUTE ON FUNCTION core.submission_last_retrieval_date TO "www-data";
-GRANT EXECUTE ON FUNCTION core.submission_last_retrieval_date TO schooner_dev;
+GRANT EXECUTE ON FUNCTION core.submission_adjusted_score TO "www-data";
+GRANT EXECUTE ON FUNCTION core.submission_adjusted_score TO schooner_dev;
+
+
 
 
 -- call core.enrol('DTE20068-3002', 'dodo', '9137192', 'dodo@null', 'Do', 'Doris');
@@ -701,6 +714,60 @@ GRANT EXECUTE ON PROCEDURE core.enrol TO schooner_dev;
 
 COMMENT ON PROCEDURE core.enrol IS
 'Creates (or updates) an enrollment for a single student.';
+
+
+
+-- Assignments open for submissions
+\echp '=== VIEW core.assignments_open_for_submissions'
+CREATE VIEW core.assignments_open_for_submissions AS
+    SELECT      assignment.course_id,
+                assignment.assignment_id,
+                assignment.handler AS type,
+                COALESCE(assignment.opens, course.opens) AS opens,
+                assignment.retries,
+                assignment.deadline,
+                assignment.latepenalty,
+                CASE
+                    WHEN assignment.deadline IS NULL THEN
+                        course.closes
+                    ELSE
+                        assignment.deadline + COALESCE(
+                            CEIL(1 / assignment.latepenalty) - 1,
+                            0
+                        )::INTEGER
+                END::DATE AS last_submission_date
+    FROM        core.assignment
+                INNER JOIN core.course
+                ON (assignment.course_id = course.course_id)
+    WHERE       -- Assignment is open (note: course.opens is NOT NULL)
+                COALESCE(assignment.opens, course.opens) < CURRENT_TIMESTAMP
+                AND
+                -- ...and has not yet been closed, past its deadline or softdeadline
+                -- NULL here signifies that the assignment is open indefinitely
+                    (
+                        (
+                            assignment.deadline IS NULL
+                            AND
+                            (
+                                course.closes IS NULL
+                                OR
+                                course.closes > CURRENT_TIMESTAMP
+                            )
+                        )
+                        OR
+                        -- +1 because submissions are open UNTIL the END of the date
+                        assignment.deadline + COALESCE(
+                            CEIL(1 / assignment.latepenalty) - 1,
+                            0
+                        )::INTEGER + 1 > CURRENT_TIMESTAMP
+                    );
+GRANT SELECT ON core.assignments_open_for_submissions TO schooner_dev;
+GRANT SELECT ON core.assignments_open_for_submissions TO "www-data";
+
+COMMENT ON VIEW core.assignments_open_for_submissions IS
+'Shows all assignments that are open for submissions. NOT SUITABLE FOR HUBBO because when HUBBOT executes, it must fetch submissions also for assignments that closed just at that midnight.';
+
+
 
 
 -- Last accepted submission
@@ -791,7 +858,7 @@ COMMENT ON VIEW core.best_accepted_submission IS
 'This view can be used to calculate course score. Adjusted score ensures that points cannot be accrued if the deadline or soft deadline has been missed.';
 
 
-\echo '=== VIEW core.last_accepted_submission'
+\echo '=== VIEW core.ongoing_courses'
 CREATE OR REPLACE VIEW core.ongoing_courses AS
 SELECT      course.course_id,
             course.code,
@@ -815,6 +882,39 @@ GROUP BY    course.course_id,
 GRANT SELECT ON core.ongoing_courses TO schooner_dev;
 GRANT SELECT ON core.ongoing_courses TO "www-data";
 
+
+\echo '=== VIEW core.assignments_being_retrieved'
+CREATE OR REPLACE VIEW core.assignments_being_retrieved AS
+SELECT      assignment.course_id,
+            assignment.assignment_id,
+            assignment.name,
+            assignment.retries,
+            assignment.deadline,
+            core.submission_last_retrieval_date(
+                assignment.deadline,
+                assignment.latepenalty
+            ) AS last_retrieval_date
+FROM        core.assignment
+WHERE       assignment.handler = 'HUBBOT'
+            AND
+            (
+                deadline IS NULL
+                OR
+                (
+                    deadline < CURRENT_DATE
+                    AND
+                    core.submission_last_retrieval_date(
+                        assignment.deadline,
+                        assignment.latepenalty
+                    ) >= CURRENT_DATE
+                )
+            )
+ORDER BY    5;
+GRANT SELECT ON core.assignments_being_retrieved TO schooner_dev;
+GRANT SELECT ON core.assignments_being_retrieved TO "www-data";
+
+COMMENT ON VIEW core.assignments_being_retrieved IS
+'List of assignments past their deadline that are being fetched. For regular assignments this is the next day (deadline ends at midnight, so the fetch takes place on the next day). For soft deadline assignments, this is calculated from the latepenalty.';
 
 
 \echo '=== core.asset_claim()'

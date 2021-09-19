@@ -139,9 +139,9 @@ class Message(MIMEMultipart):
             self['Date']         = email.utils.formatdate(localtime=True)
             self['Subject']      = item['subject']
             self['X-Priority']   = {
-                                    'low': '5',
-                                    'normal': '3',
-                                    'high': '1'
+                                    'low':      '5',
+                                    'normal':   '3',
+                                    'high':     '1'
                                 }[item['priority']]
             # "plain" or "html" (strip the "text/" part from the beginning)
             self.attach(MIMEText(item['body'], item['mimetype'].split('/')[1]))

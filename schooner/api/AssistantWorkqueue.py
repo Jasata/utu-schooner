@@ -12,8 +12,10 @@
 
 
 class AssistantWorkqueue(list):
+    """List of dictionaries. All unevaluated HUBBOT type submissions for course(s) in which the assistant uid is registered as an active assistant."""
 
     def __init__(self, cursor, uid:str, **kwargs):
+        """Queries all unevaluated HUBBOT type submissions from course(s) in which the specified uid (assistant) is registered in, and is in active status. kwargs may specify column (key) = values that will be used to filter the results. Value may be a single value or list of values."""
         self.SQL = """
             SELECT      *
             FROM        assistant.workqueue(%(uid)s)
