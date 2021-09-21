@@ -57,7 +57,7 @@ CREATE TABLE system.log
     created         TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     name            VARCHAR(32)     NOT NULL,
     level           VARCHAR(10)     NOT NULL,
-    message         VARCHAR(1000)   NOT NULL,
+    message         TEXT            NOT NULL,
     source          VARCHAR(100)    NULL
 );
 GRANT ALL PRIVILEGES ON system.log TO schooner_dev;

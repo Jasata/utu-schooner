@@ -135,6 +135,27 @@ def log_fetch(fetchfile, message):
         log_fetch.write(f"{message}\n")
 
 
+class MessageBuffer(list):
+    def __init__(self, log):
+        self.log = log
+    def debug(self, msg: str):
+        if self.log.getEffectiveLevel() <= 10:
+            self.append(msg)
+    def info(self, msg: str):
+        if self.log.getEffectiveLevel() <= 20:
+            self.append(msg)
+    def warning(self, msg: str):
+        if self.log.getEffectiveLevel() <= 30:
+            self.append(msg)
+    def error(self, msg: str):
+        if self.log.getEffectiveLevel() <= 40:
+            self.append(msg)
+    def exception(self, msg: str):
+        if self.log.getEffectiveLevel() <= 40:
+            self.append(msg)
+    def __repr__(self):
+        return "\n".join(self)
+
 
 class GitRepositoryNotFound(Exception):
     pass
@@ -375,10 +396,6 @@ if __name__ == '__main__':
         )
         log.addHandler(handler)
 
-    # Eitherway, DB log handler is always added
-    handler = LogDBHandler(cfg.database, level = cfg.loglevel)
-    log.addHandler(handler)
-
 
     args, _ = argparser.parse_known_args()
 
@@ -461,15 +478,6 @@ if __name__ == '__main__':
             #
             # Handle case: repository doesn't exist or cannot be found
             #
-            #repository_content_url = "https://api.github.com/repos/{}/{}/contents/".format(
-            #    student['github_account'],
-            #    student['github_repository']
-            #)
-            #if gh_session.get(repository_content_url).status_code == 404:
-            #    raise GitRepositoryNotFound(
-            #        f"Student {student['uid']}: Github repository ({student_repository} not found\n"
-            #    ) 
-            # Check that the repository exists
             if not repository.exists():
                 raise GitRepositoryNotFound(
                     "Student {}: Github repository ({}) not found".format(
@@ -498,25 +506,6 @@ if __name__ == '__main__':
                 )
             log.debug(f"Positive trigger(s) for fetch: {triggers}")
 
-            #repo_contents   = json.loads(gh_session.get(repository_content_url).text)
-            #filenames       = [file['name'] for file in repo_contents]
-            #if assignment['assignment_id'] not in filenames:
-            #if assignment['assignment_id'] not in repository.filenames:
-            # if not repository.file_exists(assignment_id):
-            #     raise GitFolderNotFound(
-            #         "File/folder '{}' not found in student '{}' repository {}".format(
-            #             assignment_id,
-            #             uid,
-            #             repository.URL.HTTPS
-            #         )
-            #     )
-            # log.debug(
-            #     "File/folder '{}' found in student '{}' repository {}".format(
-            #         assignment_id,
-            #         uid,
-            #         repository.URL.HTTPS
-            #     )
-            # )
 
             #
             # Fetch should happen once in a day - if path already exists, something is wrong.
@@ -557,9 +546,8 @@ if __name__ == '__main__':
                 )
             )
 
-
         except (GitRepositoryNotFound, GitFetchTriggerNotFound) as e:
-            log.info(f"GIT EXCEPTION {e}")
+            log.info(f"Git clone not successful: {e}")
             with open(fetchfile, 'a') as log_fetch:
                 log_fetch.write(f"{str(e)}\nEnd of fetch.\n")
             # Already in the log.info call above
@@ -611,12 +599,16 @@ if __name__ == '__main__':
 
 
 
-
     ###########################################################################
     #
     # Dispatcher
     #
     else:
+        # Dispatcher logs to the DB
+        handler = LogDBHandler(cfg.database, level = cfg.loglevel)
+        log.addHandler(handler)
+        log.name = "HubBot Dispatcher"
+        logbuffer = MessageBuffer(log)
         errors  = []
         fetches = []
         # Using local authentication -- password is never used
@@ -626,10 +618,10 @@ if __name__ == '__main__':
                  psycopg.connect(cstring).cursor() as cursor:
    
                 assignments = GitAssignments(cursor)
-                log.info(f"Dispatcher processing {len(assignments)} assignments")
+                logbuffer.info(f"Dispatcher processing {len(assignments)} assignments")
                 for assignment in assignments:
-                    log.info(
-                        "{}, {} (last retrieval {})".format(
+                    logbuffer.info(
+                        "\n{}, {} (last retrieval {})".format(
                             assignment['course_id'],
                             assignment['assignment_id'],
                             assignment['last_retrieval_date']
@@ -643,32 +635,35 @@ if __name__ == '__main__':
                                             )
                         uid = submission['uid']
 
+                        #
+                        # Reasons to skip a fetch
+                        #
                         if submission['status'] != 'active':
-                            log.debug(
-                                f"Skipping '{uid}' - not active in course!"
+                            logbuffer.debug(
+                                f"'{uid}' : Skipping - not active in course!"
                             )
                             continue
                         if submission['github_account'] is None:
-                            log.debug(
-                                f"Skipping '{uid}' - no GitHub account registered!"
+                            logbuffer.debug(
+                                f"'{uid}' : Skipping - no GitHub account registered!"
                             )
                             continue
                         if submission['draft_submission_id'] is not None:
-                            log.debug(
-                                f"Skipping '{uid}' - has an open draft submission!"
+                            logbuffer.debug(
+                                f"'{uid}' : Skipping - has an open draft submission!"
                             )
                             continue
                         if submission['accepted_submission_id'] is not None:
                             if not can_retry:
-                                log.debug(
-                                    f"Skipping '{uid}' - has already accepted submission!"
+                                logbuffer.debug(
+                                    f"'{uid}' : Skipping - has already accepted submission!"
                                 )
                                 continue
                         #
-                        # No reason to skip, attempt fetch
+                        # No reason found to skip, make a fetch attempt
                         #
-                        log.debug(f"Fetching '{uid}' submission")
                         try:
+                            # Sub process returns tuple (return_code, stdout, stderr)
                             clone = processer(
                                 "python hubbot.py --clone {} {} {}".format(
                                     assignment['course_id'],
@@ -678,18 +673,32 @@ if __name__ == '__main__':
                             )
                             fetches.append(clone)
                         except Exception as e:
+                            logbuffer.debug(
+                                "'{}' : Fetch FAILURE!\n{}".format(uid, str(e))
+                            )
                             fetches.append((-1, None, str(e)))
                             log.error(str(e))
+                        else:
+                            logbuffer.debug(
+                                "'{}' : Fetch completed without errors\n".format(uid) +
+                                "Return code: {}\nSTDOUT : \n{}STDERR : \n{}".format(
+                                    str(fetches[-1][0]),
+                                    "\n    ".join(fetches[-1][1].split("\\n")) if fetches[-1][1] else "(None)",
+                                    "\n    ".join(fetches[-1][2].split("\\n")) if fetches[-1][2] else "(None)"
+                                )
+                            )
+
 
         except Lockfile.AlreadyRunning as e:
             log.error("Execution cancelled! Lockfile found (another process still running).")
+            os._exit(1)
         except Exception as ex:
+            # Dump out whatever has been accumulated into the logbuffer
+            log.info(logbuffer)
             log.exception(f"Script execution error!") #, exec_info = False)
             os._exit(-1)
 
-        if logging.getLevelName(log.getEffectiveLevel()) == 'DEBUG':
-            for fetch in fetches:
-                log.debug(fetch)
+
         # Report success and error counts
         success     = 0
         not_found   = 0
@@ -701,7 +710,16 @@ if __name__ == '__main__':
                 not_found +=1
             else:
                 errors += 1
-        log.info(f"Of {len(fetches)} fetches: {success} successful fetches, {not_found} not found, {errors} errors in {runtime.report()}.")
+        logbuffer.info(
+            "\nTotal of {} fetch attempts ({} successes, {} not found, {} errors) in {}.".format(
+                len(fetches),
+                success,
+                not_found,
+                errors,
+                runtime.report()
+            )
+        )
+        log.info(logbuffer)
 
 
 # EOF

@@ -7,6 +7,7 @@
 #
 # LogDBHandler.py - List of pending GitHub registrations
 #   2021-08-29  Initial version.
+#   2021-09-21  log.message VARCHAR(1000) -> TEXT, removed truncate.
 #
 import os
 import psycopg
@@ -34,7 +35,7 @@ class LogDBHandler(logging.Handler):
                     {
                         'name'      : truncate(record.name, 32),
                         'level'     : truncate(record.levelname, 10),
-                        'message'   : truncate(record.getMessage(), 1000),
+                        'message'   : record.getMessage(),
                         'source'    : truncate(
                             f"({os.getpid()}) {record.filename}:{record.lineno} {record.funcName if record.funcName == '<module>' else record.funcName + '()'}",
                             100
