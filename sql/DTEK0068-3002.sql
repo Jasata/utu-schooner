@@ -32,7 +32,7 @@ VALUES
     'Embedded Microprocessor Systems',
     'dtek0068@utu.fi',
     'DTEK0068',
-    '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',
+    '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',
     'DTEK0068-3002_WELCOME',
     '2021-10-25',
     '2021-12-19',
@@ -58,11 +58,12 @@ INSERT INTO core.assignment
     retries,
     deadline,
     latepenalty,
-    evaluation
+    evaluation,
+    directives
 )
 VALUES
 (
-    'T01',
+    'GITREG',
     'DTEK0068-3002',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
@@ -72,10 +73,11 @@ VALUES
     NULL,
     '2021-10-30',
     NULL,
-    DEFAULT
+    DEFAULT,
+    NULL
 ),
 (
-    'T02',
+    'KIT',
     'DTEK0068-3002',
     'Component Kit Loan',
     'Component Kit lending. A ''draft'' submission registers the kit ID for loan and once returned, the submission is set to ''accepted''',
@@ -85,7 +87,8 @@ VALUES
     NULL,
     '2021-12-17',
     NULL,
-    'last'
+    'last',
+    NULL
 ),
 (
     'E01',
@@ -98,7 +101,16 @@ VALUES
     0,
     '2021-11-07',
     NULL,
-    DEFAULT
+    DEFAULT,
+    '{
+        "fetch" : {
+            "trigger" : {
+                "type" : "dir",
+                "path" : "/",
+                "pattern" : "E01-*.X"
+            }
+        }
+    }'
 ),
 (
     'E02',
@@ -111,7 +123,16 @@ VALUES
     0,
     '2021-11-14',
     NULL,
-    DEFAULT
+    DEFAULT,
+    '{
+        "fetch" : {
+            "trigger" : {
+                "type" : "dir",
+                "path" : "/",
+                "pattern" : "E02-*.X"
+            }
+        }
+    }'
 ),
 (
     'E03',
@@ -124,7 +145,16 @@ VALUES
     0,
     '2021-11-21',
     NULL,
-    DEFAULT
+    DEFAULT,
+    '{
+        "fetch" : {
+            "trigger" : {
+                "type" : "dir",
+                "path" : "/",
+                "pattern" : "E03-*.X"
+            }
+        }
+    }'
 ),
 (
     'E04',
@@ -137,7 +167,16 @@ VALUES
     0,
     '2021-11-28',
     NULL,
-    DEFAULT
+    DEFAULT,
+    '{
+        "fetch" : {
+            "trigger" : {
+                "type" : "dir",
+                "path" : "/",
+                "pattern" : "E04-*.X"
+            }
+        }
+    }'
 ),
 (
     'E05',
@@ -150,7 +189,16 @@ VALUES
     0,
     '2021-12-05',
     NULL,
-    DEFAULT
+    DEFAULT,
+    '{
+        "fetch" : {
+            "trigger" : {
+                "type" : "dir",
+                "path" : "/",
+                "pattern" : "E05-*.X"
+            }
+        }
+    }'
 ),
 (
     'E06',
@@ -163,7 +211,16 @@ VALUES
     0,
     '2021-12-12',
     NULL,
-    DEFAULT
+    DEFAULT,
+    '{
+        "fetch" : {
+            "trigger" : {
+                "type" : "dir",
+                "path" : "/",
+                "pattern" : "E06-*.X"
+            }
+        }
+    }'
 ),
 (
     'Q01',
@@ -176,7 +233,8 @@ VALUES
     0,
     '2021-10-31',
     NULL,
-    DEFAULT
+    DEFAULT,
+    NULL
 ),
 (
     'Q02',
@@ -189,7 +247,8 @@ VALUES
     0,
     '2021-11-07',
     NULL,
-    DEFAULT
+    DEFAULT,
+    NULL
 ),
 (
     'Q03',
@@ -202,7 +261,8 @@ VALUES
     0,
     '2021-11-14',
     NULL,
-    DEFAULT
+    DEFAULT,
+    NULL
 ),
 (
     'Q04',
@@ -215,7 +275,8 @@ VALUES
     0,
     '2021-11-21',
     NULL,
-    DEFAULT
+    DEFAULT,
+    NULL
 ),
 (
     'Q05',
@@ -228,7 +289,8 @@ VALUES
     0,
     '2021-11-28',
     NULL,
-    DEFAULT
+    DEFAULT,
+    NULL
 ),
 (
     'Q06',
@@ -241,7 +303,8 @@ VALUES
     0,
     '2021-12-05',
     NULL,
-    DEFAULT
+    DEFAULT,
+    NULL
 ),
 (
     'Q07',
@@ -254,7 +317,8 @@ VALUES
     0,
     '2021-12-12',
     NULL,
-    DEFAULT
+    DEFAULT,
+    NULL
 ),
 (
     'EXM',
@@ -267,7 +331,8 @@ VALUES
     2,
     '2021-12-12',
     NULL,
-    'best'
+    'best',
+    NULL
 );
 
 INSERT INTO email.template
@@ -295,5 +360,6 @@ Regards,
     DEFAULT,
     NULL
 );
+\echo '=== DTEK0068-3002 DONE!'
 
 -- EOF

@@ -31,7 +31,7 @@ CREATE TABLE system.config
 CREATE RULE system_config_delete
 AS
     ON DELETE
-    TO assistant.config
+    TO system.config
     DO INSTEAD NOTHING;
 INSERT INTO system.config (rowlock) VALUES (TRUE);
 

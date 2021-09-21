@@ -718,7 +718,7 @@ COMMENT ON PROCEDURE core.enrol IS
 
 
 -- Assignments open for submissions
-\echp '=== VIEW core.assignments_open_for_submissions'
+\echo '=== VIEW core.assignments_open_for_submissions'
 CREATE VIEW core.assignments_open_for_submissions AS
     SELECT      assignment.course_id,
                 assignment.assignment_id,

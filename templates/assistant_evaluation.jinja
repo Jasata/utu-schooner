@@ -37,11 +37,22 @@ table.details tbody tr td:nth-child(2) {
 }
 </style>
 <script>
+    function isInt(value) {
+        return /^\d+$/.test(value) && !isNaN(value) && parseInt(Number(value)) == value && !isNaN(parseInt(value, 10))
+    }
     function acceptSubmission(form) {
         console.log(form.points.value)
         console.log({{ submission['assignment_max_points'] }})
         if (!form.points.value) {
             alert("No points have been given!")
+            return false
+        }
+        if (!form.feedback.value) {
+            alert("Accepting requires evaluation feedback!")
+            return false
+        }
+        if (!isInt(form.points.value)) {
+            alert("Points must be given in positive integers!")
             return false
         }
         if (form.points.value > {{ submission['assignment_max_points'] }}) {
@@ -52,7 +63,7 @@ table.details tbody tr td:nth-child(2) {
             alert("Awarded points cannot be less than zero!")
             return false
         }
-        if (!window.confirm("Are you sure?")) {
+        if (!window.confirm("You are about to accept this submission and award it " + form.points.value + " points.\n\nAre you sure?")) {
             return false
         }
         form.action = "/assistant_evaluation_accept.html"
@@ -61,7 +72,11 @@ table.details tbody tr td:nth-child(2) {
     }
 
     function rejectSubmission(form) {
-        if (!window.confirm("Are you sure?")) {
+        if (!form.feedback.value) {
+            alert("Rejecting requires evaluation feedback!")
+            return false
+        }
+        if (!window.confirm("You are about to reject this sumbission (no points will be awarded).\n\nAre you sure?")) {
             return false
         }
         form.action = "/assistant_evaluation_reject.html"
@@ -70,7 +85,7 @@ table.details tbody tr td:nth-child(2) {
     }
 
     function cancelEvaluation(form) {
-        if (!window.confirm("Are you sure?")) {
+        if (!window.confirm("This action will cancel evaluation and make return it to the workqueue.\n\nAre you sure?")) {
             return false
         }
         console.log('User confirms cancellation')

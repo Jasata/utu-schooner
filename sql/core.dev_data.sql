@@ -9,258 +9,6 @@
 --  2021-08-31  Changed for assignment.evaluation.
 --
 
--- Future DTE20068 (2022)
-\echo '=== INSERT''ing core development data...'
-INSERT INTO core.course
-(
-    course_id,
-    code,
-    name,
-    email,
-    enrollment_message,
-    opens,
-    closes,
-    gradesys_id,
-    description
-)
-VALUES
-(
-    'DTEK0068-3003',
-    'DTEK0068',
-    'Embedded Microprocessor Systems',
-    'dtek0068@utu.fi',
-    NULL,
-    '2022-10-25',
-    '2022-12-20',
-    '0-5/60',
-    'Future implementation.'
-);
-
-INSERT INTO core.assignment
-(
-    assignment_id,
-    course_id,
-    name,
-    description,
-    handler,
-    points,
-    pass,
-    retries,
-    deadline,
-    latepenalty,
-    evaluation
-)
-VALUES
-(
-    'T01',
-    'DTEK0068-3003',
-    'GitHub Account Registration',
-    'Student must register the GitHub account that will be used to submit the exercises in this course.',
-    'HUBREG',
-    1,
-    1,
-    NULL,
-    '2022-10-30',
-    NULL,
-    DEFAULT
-),
-(
-    'T02',
-    'DTEK0068-3003',
-    'VM Workshop',
-    'Component Kit distribution',
-    NULL,
-    1,
-    1,
-    0,
-    '2022-10-27',
-    NULL,
-    'last'
-),
-(
-    'E01',
-    'DTEK0068-3003',
-    'Week 2 Exercise',
-    'Blink a LED',
-    'HUBBOT',
-    40,
-    NULL,
-    0,
-    '2022-11-07',
-    NULL,
-    DEFAULT
-),
-(
-    'E02',
-    'DTEK0068-3003',
-    'Week 3 Exercise',
-    'Read ADC',
-    'HUBBOT',
-    60,
-    NULL,
-    0,
-    '2022-11-14',
-    NULL,
-    DEFAULT
-),
-(
-    'E03',
-    'DTEK0068-3003',
-    'Week 4 Exercise',
-    'ISR & Timer',
-    'HUBBOT',
-    80,
-    NULL,
-    0,
-    '2022-11-21',
-    NULL,
-    DEFAULT
-),
-(
-    'E04',
-    'DTEK0068-3003',
-    'Week 5 Exercise',
-    'Servo and PID',
-    'HUBBOT',
-    100,
-    NULL,
-    0,
-    '2022-11-28',
-    NULL,
-    DEFAULT
-),
-(
-    'E05',
-    'DTEK0068-3003',
-    'Week 6 Exercise',
-    'FreeRTOS',
-    'HUBBOT',
-    100,
-    NULL,
-    0,
-    '2022-12-05',
-    NULL,
-    DEFAULT
-),
-(
-    'E06',
-    'DTEK0068-3003',
-    'Week 7 Exercise',
-    'Run for the hills!',
-    'HUBBOT',
-    120,
-    NULL,
-    0,
-    '2022-12-12',
-    NULL,
-    DEFAULT
-),
-(
-    'Q01',
-    'DTEK0068-3003',
-    'Week 1 Quizz',
-    NULL,
-    'APLUS',
-    35,
-    NULL,
-    0,
-    '2022-10-31',
-    NULL,
-    DEFAULT
-),
-(
-    'Q02',
-    'DTEK0068-3003',
-    'Week 2 Quizz',
-    NULL,
-    'APLUS',
-    35,
-    NULL,
-    0,
-    '2022-11-07',
-    NULL,
-    DEFAULT
-),
-(
-    'Q03',
-    'DTEK0068-3003',
-    'Week 3 Quizz',
-    NULL,
-    'APLUS',
-    35,
-    NULL,
-    0,
-    '2022-11-14',
-    NULL,
-    DEFAULT
-),
-(
-    'Q04',
-    'DTEK0068-3003',
-    'Week 4 Quizz',
-    NULL,
-    'APLUS',
-    35,
-    NULL,
-    0,
-    '2022-11-21',
-    NULL,
-    DEFAULT
-),
-(
-    'Q05',
-    'DTEK0068-3003',
-    'Week 5 Quizz',
-    NULL,
-    'APLUS',
-    35,
-    NULL,
-    0,
-    '2022-11-28',
-    NULL,
-    DEFAULT
-),
-(
-    'Q06',
-    'DTEK0068-3003',
-    'Week 6 Quizz',
-    NULL,
-    'APLUS',
-    35,
-    NULL,
-    0,
-    '2022-12-05',
-    NULL,
-    DEFAULT
-),
-(
-    'Q07',
-    'DTEK0068-3003',
-    'Week 7 Quizz',
-    NULL,
-    'APLUS',
-    35,
-    NULL,
-    0,
-    '2022-12-12',
-    NULL,
-    DEFAULT
-),
-(
-    'EXM',
-    'DTEK0068-3003',
-    'Exam',
-    'exam.utu.fi exam, based on weekly quizzes',
-    NULL,
-    245,
-    147,
-    2,
-    '2022-12-12',
-    NULL,
-    'best'
-);
-
-
 
 -- For Dummies course
 \echo 'DTEK0000-* PAST, ONGOING and FUTURE courses'
@@ -305,7 +53,7 @@ VALUES
     'CURRENT course (2021)',
     NULL,
     NULL,
-    '2021-08-25',
+    '2021-09-20',
     '2021-12-18',
     '0-5/60',
     'For Dummies. Made by a Dummy.'
@@ -352,7 +100,7 @@ INSERT INTO core.assignment
 )
 VALUES
 (
-    'T01',
+    'GITREG',
     'DTEK0000-3000',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
@@ -364,7 +112,7 @@ VALUES
     NULL
 ),
 (
-    'T01',
+    'GITREG',
     'DTEK0000-3001',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
@@ -376,7 +124,7 @@ VALUES
     NULL
 ),
 (
-    'T01',
+    'GITREG',
     'DTEK0000-3002',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
@@ -388,7 +136,7 @@ VALUES
     NULL
 ),
 (
-    'T01',
+    'GITREG',
     'DTEK0000-3003',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
@@ -400,7 +148,7 @@ VALUES
     NULL
 ),
 (
-    'T01',
+    'GITREG',
     'DTEK0000-3004',
     'GitHub Account Registration',
     'Student must register the GitHub account that will be used to submit the exercises in this course.',
@@ -427,11 +175,11 @@ INSERT INTO core.assignment
     latepenalty
 )
 VALUES
-('T02', 'DTEK0000-3000', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2019-09-20', NULL),
-('T02', 'DTEK0000-3001', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2020-09-20', NULL),
-('T02', 'DTEK0000-3002', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2021-09-20', NULL),
-('T02', 'DTEK0000-3003', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2022-09-20', NULL),
-('T02', 'DTEK0000-3004', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2023-09-20', NULL);
+('KIT', 'DTEK0000-3000', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2019-09-20', NULL),
+('KIT', 'DTEK0000-3001', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2020-09-20', NULL),
+('KIT', 'DTEK0000-3002', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2021-09-20', NULL),
+('KIT', 'DTEK0000-3003', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2022-09-20', NULL),
+('KIT', 'DTEK0000-3004', 'Asset loan', 'Students sign for course material loan.', 'ASSETMGR', 1, 1, NULL, '2023-09-20', NULL);
 
 
 \echo 'DTEK0000-* Weekly quizzes'
@@ -488,14 +236,15 @@ INSERT INTO core.assignment
     pass,
     retries,
     deadline,
-    latepenalty
+    latepenalty,
+    directives
 )
 VALUES
-('E01', 'DTEK0000-3000', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2019-09-07', NULL),
-('E01', 'DTEK0000-3001', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2020-09-07', NULL),
-('E01', 'DTEK0000-3002', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2021-09-07', NULL),
-('E01', 'DTEK0000-3003', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2022-09-07', NULL),
-('E01', 'DTEK0000-3004', 'First exercise', 'Hello World', 'HUBBOT', 40, 20, 2, '2023-09-07', NULL);
+('E01','DTEK0000-3000','First exercise','Hello World','HUBBOT',40,20,2,'2019-09-07',NULL,'{"fetch":{"trigger":{"type":"dir","path":"/","pattern":"E01-*.X"}}}'),
+('E01','DTEK0000-3001','First exercise','Hello World','HUBBOT',40,20,2,'2020-09-07',NULL,'{"fetch":{"trigger":{"type":"dir","path":"/","pattern":"E01-*.X"}}}'),
+('E01','DTEK0000-3002','First exercise','Hello World','HUBBOT',40,20,2,'2021-09-20',0.25,'{"fetch":{"trigger":{"type":"dir","path":"/","pattern":"E01-*.X"}}}'),
+('E01','DTEK0000-3003','First exercise','Hello World','HUBBOT',40,20,2,'2022-09-07',NULL,'{"fetch":{"trigger":{"type":"dir","path":"/","pattern":"E01-*.X"}}}'),
+('E01','DTEK0000-3004','First exercise','Hello World','HUBBOT',40,20,2,'2023-09-07',NULL,'{"fetch":{"trigger":{"type":"dir","path":"/","pattern":"E01-*.X"}}}');
 
 
 INSERT INTO core.assignment
@@ -509,14 +258,33 @@ INSERT INTO core.assignment
     pass,
     retries,
     deadline,
-    latepenalty
+    latepenalty,
+    directives
 )
 VALUES
-('E02', 'DTEK0000-3000', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2019-09-14', NULL),
-('E02', 'DTEK0000-3001', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2020-09-14', NULL),
-('E02', 'DTEK0000-3002', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2021-09-14', NULL),
-('E02', 'DTEK0000-3003', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2022-09-14', NULL),
-('E02', 'DTEK0000-3004', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2023-09-14', NULL);
+('E02', 'DTEK0000-3000', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2019-09-14', NULL, '{"fetch" : {"trigger" : {"type" : "dir", "path" : "/", "pattern" : "E02-*.X"}}}'),
+('E02', 'DTEK0000-3001', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2020-09-14', NULL, '{"fetch" : {"trigger" : {"type" : "dir", "path" : "/", "pattern" : "E02-*.X"}}}'),
+('E02', 'DTEK0000-3002', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2021-09-21', 0.5, '{"fetch" : {"trigger" : {"type" : "dir", "path" : "/", "pattern" : "E02-*.X"}}}'),
+('E02', 'DTEK0000-3003', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2022-09-14', NULL, '{"fetch" : {"trigger" : {"type" : "dir", "path" : "/", "pattern" : "E02-*.X"}}}'),
+('E02', 'DTEK0000-3004', 'ROT13', 'encoder/decoder', 'HUBBOT', 60, NULL, 2, '2023-09-14', NULL, '{"fetch" : {"trigger" : {"type" : "dir", "path" : "/", "pattern" : "E02-*.X"}}}');
+
+
+INSERT INTO core.assignment
+(
+    assignment_id,
+    course_id,
+    name,
+    description,
+    handler,
+    points,
+    pass,
+    retries,
+    deadline,
+    latepenalty,
+    directives
+)
+VALUES
+('E03', 'DTEK0000-3002', 'ROBOT', 'Simple navigating robot', 'HUBBOT', 60, NULL, 2, '2021-09-23', NULL, '{"fetch" : {"trigger" : {"type" : "dir", "path" : "/", "pattern" : "E03-*.X"}}}');
 
 
 \echo 'DTEK0000-* Exam'
@@ -670,24 +438,8 @@ INSERT INTO core.submission
     score
 )
 VALUES
-('T01', 'DTEK0000-3002', 'jasata', 'Zorro',   'draft',    NULL,       NULL),
-('T02', 'DTEK0000-3002', 'jasata', '#001',    'draft',    NULL,       NULL),
-('T02', 'DTEK0000-3002', 'tumipo', '#002',    'draft',    NULL,       NULL);
+('KIT', 'DTEK0000-3002', 'jasata', '#001',    'draft',    NULL,       NULL),
+('KIT', 'DTEK0000-3002', 'tumipo', '#002',    'draft',    NULL,       NULL);
 
-
-INSERT INTO core.submission
-(
-    assignment_id,
-    course_id,
-    uid,
-    content,
-    state,
-    evaluator,
-    score
-)
-VALUES
-('E01', 'DTEK0000-3002', 'jasata', 'WHAT GOES HERE',   'draft',    NULL,       NULL),
-('E02', 'DTEK0000-3002', 'jasata', 'I did a thing',    'draft',    NULL,       NULL),
-('E02', 'DTEK0000-3002', 'tumipo', 'Cake',             'draft',    NULL,       NULL);
 
 -- EOF

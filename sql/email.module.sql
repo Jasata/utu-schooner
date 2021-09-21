@@ -575,7 +575,7 @@ CREATE OR REPLACE FUNCTION email.jtd_assignment_rec(
         course_description          VARCHAR,
         assignment_id               VARCHAR,
         assignment_name             VARCHAR,
-        assignment_description      VARCHAR,
+        assignment_description      TEXT,
         assignment_points           INTEGER,
         assignment_pass             INTEGER,
         assignment_retries          INTEGER,

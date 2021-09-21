@@ -15,6 +15,8 @@
 #   2021-08-31  Supports CSV column mapping to process different exports.
 #   2021-09-05  Minor fix for calling JTDTemplate.parse_and_queue().
 #   2021-09-08  Updated for changed Peppi export layout... again.
+#   2021-09-21  Few log lines, changed .parse_and_queue() argument to more
+#               descriptive one.
 #
 #   IMPORTANT
 # -----------------------------------------------------------------------------
@@ -400,9 +402,15 @@ if __name__ == '__main__':
         try:
             course = Course(cursor, args.course_id)
             if course['enrollment_message']:
+                log.info(
+                    f"Using enrollment message template '{course['enrollment_message']}'"
+                )
                 jt_msg  = Template(cursor, course['enrollment_message'])
                 jt_data = JTDCourseWelcome(cursor, args.course_id)
-
+            else:
+                log.info(
+                    f"Course '{args.course_id}' does not have enrollment message template"
+                )
         except Exception as e:
             log.exception(str(e))
             os._exit(-1)
@@ -444,10 +452,13 @@ if __name__ == '__main__':
                     )
                     # If enrollment message is defined
                     if course['enrollment_message']:
+                        log.debug(
+                            f"Sending enrollment message to '{sqlargs['email']}'"
+                        )
                         try:
                             jt_msg.parse_and_queue(
                                 args.course_id,
-                                row[4],
+                                sqlargs['uid'],
                                 **jt_data
                             )
                         except Template.NotSent as e:

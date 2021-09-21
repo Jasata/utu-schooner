@@ -402,6 +402,15 @@ if __name__ == '__main__':
                 assignment  = GitAssignment(cursor, course_id, assignment_id)
                 student     = Enrollee(cursor, course_id, uid)
 
+            #
+            # Terminate fetch if student is not active
+            #
+            if student['status'] != 'active':
+                log.info(
+                    f"Student '{uid}' status is not 'active'! Skipping fetch..."
+                )
+                os._exit(1)
+
             tgt = os.path.join(
                 cfg.submissions_directory,
                 course_id,
@@ -553,7 +562,8 @@ if __name__ == '__main__':
             log.info(f"GIT EXCEPTION {e}")
             with open(fetchfile, 'a') as log_fetch:
                 log_fetch.write(f"{str(e)}\nEnd of fetch.\n")
-            sys.stdout.write(str(e))
+            # Already in the log.info call above
+            #sys.stdout.write(str(e))
             with psycopg.connect(cstring).cursor() as cursor:
                 try:
                     Assignment.send_retrieval_failure_mail(
@@ -566,7 +576,7 @@ if __name__ == '__main__':
                         f"Template parsed and queued for {uid}"
                     )
                 except Template.NotSent as e:
-                    log.warning(str(e))
+                    log.info(f"Automated message not sent: {str(e)}")
                 except Exception as e:
                     log.exception(f"Automated message NOT sent! {str(e)}")
                 finally:
@@ -609,39 +619,68 @@ if __name__ == '__main__':
     else:
         errors  = []
         fetches = []
+        # Using local authentication -- password is never used
+        cstring = f"dbname={cfg.database}"
         try:
-            with Lockfile(cfg.lockfile):
-                log.info("Running dispatcher")
-
-                # Using local authentication -- password is never used
-                cstring = f"dbname={cfg.database} user={cfg.database}"
+            with Lockfile(cfg.lockfile), \
+                 psycopg.connect(cstring).cursor() as cursor:
    
-                with psycopg.connect(cstring).cursor() as cursor:
-                    assignments = GitAssignments(cursor)
-                    log.debug(f"Processing {len(assignments)} assignments")
-                    for assignment in assignments:
-                        log.debug(
-                            "{}, {} (last retrieval {})".format(
-                                assignment['course_id'],
-                                assignment['assignment_id'],
-                                assignment['last_retrieval_date']
-                            )
+                assignments = GitAssignments(cursor)
+                log.info(f"Dispatcher processing {len(assignments)} assignments")
+                for assignment in assignments:
+                    log.info(
+                        "{}, {} (last retrieval {})".format(
+                            assignment['course_id'],
+                            assignment['assignment_id'],
+                            assignment['last_retrieval_date']
                         )
-                        for submission in assignments.submissions(**assignment):
-                            draft       = submission['draft_submission_id']
-                            accepted    = submission['accepted_submission_id']
-                            can_retry   = not (assignment['retries'] == None) or (submission['n_submissions'] < assignment['retries'] + 1)
-                            has_github  = submission['github_account']
+                    )
+                    for submission in assignments.submissions(**assignment):
+                        can_retry   = not   (assignment['retries'] == None) or \
+                                            (
+                                                submission['n_submissions'] < \
+                                                assignment['retries'] + 1
+                                            )
+                        uid = submission['uid']
 
-                            if not accepted and not draft and can_retry and has_github:
-                                try:
-                                    fetchstring = f"{assignment['course_id']} {assignment['assignment_id']} {submission['uid']}"
-                                    clone = processer(f"python hubbot.py --clone {fetchstring}")
-                                    fetches.append(clone)
-                                except Exception as e:
-                                    fetches.append((-1, None, str(e)))
-                                    log.error(str(e))
-                                    
+                        if submission['status'] != 'active':
+                            log.debug(
+                                f"Skipping '{uid}' - not active in course!"
+                            )
+                            continue
+                        if submission['github_account'] is None:
+                            log.debug(
+                                f"Skipping '{uid}' - no GitHub account registered!"
+                            )
+                            continue
+                        if submission['draft_submission_id'] is not None:
+                            log.debug(
+                                f"Skipping '{uid}' - has an open draft submission!"
+                            )
+                            continue
+                        if submission['accepted_submission_id'] is not None:
+                            if not can_retry:
+                                log.debug(
+                                    f"Skipping '{uid}' - has already accepted submission!"
+                                )
+                                continue
+                        #
+                        # No reason to skip, attempt fetch
+                        #
+                        log.debug(f"Fetching '{uid}' submission")
+                        try:
+                            clone = processer(
+                                "python hubbot.py --clone {} {} {}".format(
+                                    assignment['course_id'],
+                                    assignment['assignment_id'],
+                                    submission['uid']
+                                )
+                            )
+                            fetches.append(clone)
+                        except Exception as e:
+                            fetches.append((-1, None, str(e)))
+                            log.error(str(e))
+
         except Lockfile.AlreadyRunning as e:
             log.error("Execution cancelled! Lockfile found (another process still running).")
         except Exception as ex:

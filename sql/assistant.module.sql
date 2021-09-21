@@ -733,7 +733,7 @@ BEGIN
                     submission.submitted,
                     assignment.deadline,
                     evaluation.uid AS evaluator_uid,
-                    assistant.name AS evaluator_name,
+                    evaluator.name AS evaluator_name,
                     evaluation.started AS evaluation_started
         FROM        core.submission
                     INNER JOIN core.assignment
@@ -760,6 +760,8 @@ BEGIN
                         AND
                         submission.uid = enrollee.uid
                     )
+                    LEFT OUTER JOIN assistant.assistant AS evaluator
+                    ON (evaluation.course_id = evaluator.course_id)
         WHERE       submission.state = 'draft';
     RETURN;
 END;
