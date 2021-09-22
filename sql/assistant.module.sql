@@ -733,36 +733,38 @@ BEGIN
                     submission.submitted,
                     assignment.deadline,
                     evaluation.uid AS evaluator_uid,
-                    evaluator.name AS evaluator_name,
+                    assistant.name AS evaluator_name,
                     evaluation.started AS evaluation_started
         FROM        core.submission
+                    INNER JOIN core.enrollee
+                    ON (
+                            submission.uid = enrollee.uid
+                            AND
+                            submission.course_id = enrollee.course_id
+                        )
                     INNER JOIN core.assignment
                     ON (
-                        submission.assignment_id = assignment.assignment_id 
+                        submission.assignment_id = assignment.assignment_id
                         AND
                         submission.course_id = assignment.course_id
                         AND
                         assignment.handler = 'HUBBOT'
                     )
-                    INNER JOIN assistant.assistant
-                    ON (
-                        assistant.course_id = assignment.course_id
-                        AND
-                        assistant.uid = in_uid
-                        AND
-                        assistant.status = 'active'
-                    )
                     LEFT OUTER JOIN assistant.evaluation
                     ON (submission.submission_id = evaluation.submission_id)
-                    INNER JOIN core.enrollee
+                    LEFT OUTER JOIN assistant.assistant
                     ON (
-                        submission.course_id = enrollee.course_id
+                        evaluation.course_id = assistant.course_id
                         AND
-                        submission.uid = enrollee.uid
+                        evaluation.uid = assistant.uid
                     )
-                    LEFT OUTER JOIN assistant.assistant AS evaluator
-                    ON (evaluation.course_id = evaluator.course_id)
-        WHERE       submission.state = 'draft';
+        WHERE       submission.state = 'draft'
+                    AND -- only the courses the user is assistant at
+                    submission.course_id IN (
+                        SELECT      assistant.course_id
+                        FROM        assistant.assistant
+                        WHERE       assistant.uid = in_uid
+                    );
     RETURN;
 END;
 $$;

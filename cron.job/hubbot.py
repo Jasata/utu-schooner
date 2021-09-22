@@ -9,6 +9,7 @@
 #   2021-08-13  Initial version.
 #   2021-08-29  (JTa) Refactoring.
 #   2021-08-30  (JTa) Now uses schooner package.
+#   2021-09-21  (JTa) Buffered logging.
 #  
 import os
 import sys
@@ -36,17 +37,15 @@ if sys.version_info < pyreq:
 import logging
 import logging.handlers
 
-import json
-import requests
 import git
+import json
+import shutil
 import psycopg
-
-from datetime import timedelta
-from datetime import datetime
-from datetime import date
+import datetime
+import requests
 import argparse
 import subprocess
-import shutil
+
 
 
 # Add parent directory to the search path
@@ -78,15 +77,13 @@ from schooner.util          import AppConfig
 from schooner.util          import Lockfile
 from schooner.util          import LogDBHandler
 from schooner.util          import Timer
-from schooner.db.core       import Course
 from schooner.db.core       import Enrollee
 from schooner.db.core       import Assignment
 from schooner.api           import GitAssignments
 from schooner.db.email      import Template
-from schooner.jtd           import JTDAssignment
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
-__version__     = "0.5.0 (2021-09-07)"
+__version__     = "0.6.0 (2021-09-21)"
 __authors__     = "Tuisku Polvinen <tumipo@utu.fi>, Jani Tammi <jasata@utu.fi>"
 VERSION         = __version__
 HEADER          = f"""
@@ -103,7 +100,7 @@ def processer(
         cmd: str,
         shell: bool = False,
         stdout = subprocess.PIPE,
-        stderr = subprocess.DEVNULL    
+        stderr = subprocess.DEVNULL
         ):
         """Call .subprocess("ls", stdout = subprocess.PIPE), if you want output. Otherwise the output is sent to /dev/null."""
         try:
@@ -115,7 +112,7 @@ def processer(
                 cmd,
                 shell  = shell,
                 stdout = stdout,
-                stderr = stderr        
+                stderr = stderr
             )
             # Return output (return code, stdout, stderr)
             return (
@@ -139,19 +136,19 @@ class MessageBuffer(list):
     def __init__(self, log):
         self.log = log
     def debug(self, msg: str):
-        if self.log.getEffectiveLevel() <= 10:
+        if self.log.getEffectiveLevel() <= logging.DEBUG:
             self.append(msg)
     def info(self, msg: str):
-        if self.log.getEffectiveLevel() <= 20:
+        if self.log.getEffectiveLevel() <= logging.INFO:
             self.append(msg)
     def warning(self, msg: str):
-        if self.log.getEffectiveLevel() <= 30:
+        if self.log.getEffectiveLevel() <= logging.WARNING:
             self.append(msg)
     def error(self, msg: str):
-        if self.log.getEffectiveLevel() <= 40:
+        if self.log.getEffectiveLevel() <= logging.ERROR:
             self.append(msg)
     def exception(self, msg: str):
-        if self.log.getEffectiveLevel() <= 40:
+        if self.log.getEffectiveLevel() <= logging.ERROR:
             self.append(msg)
     def __repr__(self):
         return "\n".join(self)
@@ -436,7 +433,7 @@ if __name__ == '__main__':
                 )
             if not os.path.exists(tgt):
                 os.makedirs(tgt)
-            fetchdate = datetime.now().strftime(cfg.dateformat)
+            fetchdate = datetime.datetime.now().strftime(cfg.dateformat)
             fetchfile = f'{tgt}/{fetchdate}.txt'
 
             #
@@ -461,7 +458,7 @@ if __name__ == '__main__':
         with open(fetchfile, 'a') as log_fetch:
             log_fetch.write(
                 "{}\nTrying to fetch from: https://github.com/{}/{}.git\n".format(
-                    datetime.now(),
+                    datetime.datetime.now(),
                     student['github_account'],
                     student['github_repository']
                 )
@@ -607,7 +604,8 @@ if __name__ == '__main__':
         # Dispatcher logs to the DB
         handler = LogDBHandler(cfg.database, level = cfg.loglevel)
         log.addHandler(handler)
-        log.name = "HubBot Dispatcher"
+        # Can be script name because the subprocess no longer writes to DB
+        # log.name = "HubBot Dispatcher"
         logbuffer = MessageBuffer(log)
         errors  = []
         fetches = []
@@ -683,8 +681,8 @@ if __name__ == '__main__':
                                 "'{}' : Fetch completed without errors\n".format(uid) +
                                 "Return code: {}\nSTDOUT : \n{}STDERR : \n{}".format(
                                     str(fetches[-1][0]),
-                                    "\n    ".join(fetches[-1][1].split("\\n")) if fetches[-1][1] else "(None)",
-                                    "\n    ".join(fetches[-1][2].split("\\n")) if fetches[-1][2] else "(None)"
+                                    "\n".join(fetches[-1][1].split("\\n")) if fetches[-1][1] else "(None)\n",
+                                    "\n".join(fetches[-1][2].split("\\n")) if fetches[-1][2] else "(None)\n"
                                 )
                             )
 

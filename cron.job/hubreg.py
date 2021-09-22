@@ -11,12 +11,13 @@
 #   2021-09-05  (JTa) Chanced Git registration call from PendingGitHubRegistrations
 #               into GitRegistration.register_repository()
 #   2021-09-18  (JTa) Increased the indent of a block at line 166.
+#   2021-09-21  (JTa) No log output @INFO, unless performs task(s).
 #
 # 
 # PROCESS 
 # 
 #   1)  Student creates GitHub account, preferrably named as UTU ID. 
-#   2)  Student creates a repository 'DTE20068-3002' and makes it private. 
+#   2)  Student creates a repository 'DTEK0068' and makes it private. 
 #   3)  Student invites 'dtek0068@github.com' to be a collaborator. 
 #   4)  Student registers the GitHub account at 
 #       https://schooner.utu.fi/register.html
@@ -35,7 +36,6 @@
 #from operator import sub
 import os
 import sys
-import time
 import logging
 import logging.handlers 
  
@@ -71,6 +71,8 @@ sys.path.insert(
 from schooner.util      import AppConfig
 from schooner.util      import Lockfile
 from schooner.util      import LogDBHandler
+from schooner.util      import Timer
+from schooner.util      import Counter
 from schooner.api       import GitRegistration
 from schooner.api       import PendingGitHubRegistrations
  
@@ -80,7 +82,8 @@ CONFIG_FILE = "app.conf"
 
 if __name__ == '__main__': 
  
-    script_start_time = time.time()
+    runtime = Timer()
+
     #
     # Cron job speciality - change to script's directory
     #
@@ -116,6 +119,11 @@ if __name__ == '__main__':
     try:
         with    Lockfile(cfg.lockfile), \
                 psycopg.connect(f"dbname={cfg.database}").cursor() as cursor:
+
+            #
+            # Count successes / failures
+            #
+            cntr = Counter()
 
             pendingregs = PendingGitHubRegistrations(cursor)
             for reg in pendingregs:
@@ -163,6 +171,7 @@ if __name__ == '__main__':
                                     reg['submission_id'],
                                     reg['student_repository']
                                 )
+                                cntr.add(Counter.OK)
 
                         # TODO: handle possible cases where an invitation has
                         #       already been accepted in github 
@@ -171,14 +180,17 @@ if __name__ == '__main__':
                                 log.warning(
                                     "Repository found but invite already accepted in GitHub"
                                 )
+                                cntr.add(Counter.OK)
                             else:
                                 log.debug(
                                     f"GitHub invitation matching {reg['student_account']} not found"
                                 )
+                                cntr.add(Counter.ERR)
 
                 except Exception as e:
                     log.exception(f"Script execution error! {str(e)}")
                     cursor.connection.rollback()
+                    cntr.add(Counter.ERR)
                 else:
                     cursor.connection.commit()
 
@@ -186,14 +198,22 @@ if __name__ == '__main__':
         log.warning(
             "Exiting. Another process is still executing (lockfile exists and is locked)"
         )
+        os._exit(1)
     except Exception as e:
         log.exception(str(e))
+        os._exit(-1)
 
     #
     # All pending registrations handled / attempted
     #
-    elapsed = time.time() - script_start_time 
-    log.info(f"Execution took {elapsed} seconds.")
+    if cntr.total or log.isEnabledFor(logging.DEBUG):
+        log.info(
+            "{} successful registrations, {} still pending. Execution took {}.".format(
+                cntr.successes,
+                cntr.errors,
+                runtime.report()
+            )
+        )
 
 
 
