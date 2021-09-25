@@ -846,7 +846,6 @@ def assistant_evaluation():
 
 @app.route('/assistant_evaluation_begin.html', methods=['POST'])
 def assistant_evaluation_begin():
-    from schooner.db.core       import Submission
     from schooner.db.assistant  import CourseAssistant
     from schooner.db.assistant  import Evaluation
     from schooner.api           import AssistantWorkqueue
@@ -855,7 +854,7 @@ def assistant_evaluation_begin():
         if not sso.is_authenticated:
             raise Exception("Must be authenticated to access this view")
         if not (cid := request.form.get('cid', None)):
-            raise ValueError("FORM parameter 'Cid' not found!")
+            raise ValueError("FORM parameter 'cid' not found!")
         # Check that the caller is course assistant (raises an exception if not)
         ass = CourseAssistant(g.db.cursor(), cid, sso.uid)
         if ass['open_submission_id']:
@@ -863,23 +862,13 @@ def assistant_evaluation_begin():
                 f"Already evaluating submission #{ass['open_submission_id']}. Complete that before starting another."
             )
 
-        queue = AssistantWorkqueue(
-                g.db.cursor(),
-                sso.uid,
-                course_id = cid
-            ).sort('submitted')
-        if not queue:
-            raise Exception("No more pending evaluations!")
-
         #
         # Preliminaries done
         #
         # Create empty
         evaluation = Evaluation(g.db.cursor())
-        evaluation['submission_id'] = queue[0]['submission_id']
-        evaluation['uid'] = sso.uid
-        # Begin evaluation
-        token = evaluation.begin()
+        # Begin evaluation (automatically chooses the oldest pending submission)
+        token = evaluation.begin(cid, sso.uid)
 
         # Go and initiate local transfer at Assistant vm
         return flask.redirect(f"http://localhost:8080/fetch?token={token}")

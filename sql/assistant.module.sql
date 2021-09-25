@@ -159,46 +159,138 @@ Source: https://wiki.postgresql.org/wiki/Pseudo_encrypt';
 
 
 
+
 --
 -- Workqueue management functions
 --
+\echo '=== assistant.workqueue()'
+CREATE OR REPLACE FUNCTION assistant.workqueue(
+    in_uid                  VARCHAR
+)
+    RETURNS TABLE
+    (
+        submission_id       INTEGER,
+        lastname            VARCHAR,
+        firstname           VARCHAR,
+        course_id           VARCHAR,
+        assignment_id       VARCHAR,
+        assignment_name     VARCHAR,
+        student_uid         VARCHAR,
+        submitted           TIMESTAMP,
+        deadline            DATE,
+        evaluator_uid       VARCHAR,
+        evaluator_name      VARCHAR,
+        evaluation_started  TIMESTAMP
+    )
+    LANGUAGE PLPGSQL
+    STRICT
+AS $$
+-- Returns all unevaluated HUBBOT assignment submissions for course(s) in which
+-- the given assistant uid is registered as an active assistant.
+BEGIN
+    RETURN QUERY
+        SELECT      submission.submission_id,
+                    enrollee.lastname,
+                    enrollee.firstname,
+                    submission.course_id,
+                    submission.assignment_id,
+                    assignment.name AS assignment_name,
+                    submission.uid,
+                    submission.submitted,
+                    assignment.deadline,
+                    evaluation.uid AS evaluator_uid,
+                    assistant.name AS evaluator_name,
+                    evaluation.started AS evaluation_started
+        FROM        core.submission
+                    INNER JOIN core.enrollee
+                    ON (
+                            submission.uid = enrollee.uid
+                            AND
+                            submission.course_id = enrollee.course_id
+                        )
+                    INNER JOIN core.assignment
+                    ON (
+                        submission.assignment_id = assignment.assignment_id
+                        AND
+                        submission.course_id = assignment.course_id
+                        AND
+                        assignment.handler = 'HUBBOT'
+                    )
+                    LEFT OUTER JOIN assistant.evaluation
+                    ON (submission.submission_id = evaluation.submission_id)
+                    LEFT OUTER JOIN assistant.assistant
+                    ON (
+                        evaluation.course_id = assistant.course_id
+                        AND
+                        evaluation.uid = assistant.uid
+                    )
+        WHERE       submission.state = 'draft'
+                    AND -- only the courses the user is assistant at
+                    submission.course_id IN (
+                        SELECT      assistant.course_id
+                        FROM        assistant.assistant
+                        WHERE       assistant.uid = in_uid
+                    );
+    RETURN;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION assistant.workqueue TO "www-data";
+GRANT EXECUTE ON FUNCTION assistant.workqueue TO schooner_dev;
+
+COMMENT ON FUNCTION assistant.workqueue IS
+'Return a list of non-evaluated HUBBOT submissions for all courses that the assistant is signed for.';
+
+
+
+
 \echo '=== assistant.evaluation_begin()'
 CREATE OR REPLACE FUNCTION
 assistant.evaluation_begin(
-    in_uid              VARCHAR,
-    in_submission_id    INTEGER
+    in_course_id        VARCHAR,
+    in_uid              VARCHAR
 )
-    RETURNS INTEGER
+    RETURNS TABLE (
+        submissionid    INTEGER,
+        accesstoken     INTEGER
+    )
     LANGUAGE PLPGSQL
     SECURITY DEFINER
     VOLATILE
     CALLED ON NULL INPUT
 AS $$
--- Prerequisites:
---  1)  Assistant is registered for the same course as the submission is for
---  2)  Assistant is in 'active' status
---  3)  Evaluation record either...
---      3.1)    [START] Does not exists ...or...
---      3.2)    [RESTART] Existing evaluation record:
---              - is not closed (.ended IS NULL) and 
---              - belongs to the same assistant
---  4)  The submission exists
---  5)  Submission is in 'draft' state
---
 -- This function creates (up updates) an evaluation record and generates
 -- a time-limited access token that instructs the Flask endpoint to
 -- allow submission downloads with the token.
 --
--- [START]
---  - Evaluation record and accesstoken records are created.
--- [RESTART]
---  - evaluation.started is updated with CURRENT_TIMESTAMP
---  - accesstoken.expires is updated
+-- Prerequisites:
+--  1)  Assistant
+--      a)  is registered for the specified course
+--      b)  has an active assistant status
+--  2)  Submission
+--      a)  is 'draft' state
+--      b)  either has an OPEN evaluation by specified assistant (course_id,uid)
+--          OR
+--          does not have an associated evaluation record
+--
+-- Actions
+--      - If an OPEN evaluation by specified assistant (course_id, uid) exists,
+--        the access token expiration is resetted (download available again),
+--        but no other data is modified.
+--      - Else, new evaluation record and accesstoken records are created.
+--
+-- Returns
+--      TABLE of (submission_id, accesstoken)
+--
+-- Notes
+--      Of all the dumb things in PostgreSQL, this is one of the top 10...
+--      If the RETURNS TABLE defines a column name 'submission_id', then
+--      the UPSERT assistant.accesstoken ... ON CONFLICT (submission_id)
+--      becomes "ambiguous"!! That seems like beyond stupid, more like a bug!
 --
 DECLARE
-    r_submission        RECORD;
     r_assistant         RECORD;
-    r_evaluation        RECORD;
+    r_return            RECORD;
+    v_submission_id     INTEGER;
     v_accesstoken       INTEGER;
     v_token_duration    TIME;
 BEGIN
@@ -209,30 +301,8 @@ BEGIN
     INTO        v_token_duration;
     IF NOT FOUND THEN
         RAISE EXCEPTION
-        'ERROR: Configuration table ''system.config'' is empty!'
-        USING HINT = 'CONFIG_ERROR';
-    END IF;
-    -- LOCK submission row
-    PERFORM     *
-    FROM        core.submission
-    WHERE       submission_id = in_submission_id
-    FOR UPDATE;
-    -- LOCK evaluation table
-    LOCK TABLE assistant.evaluation IN ACCESS EXCLUSIVE MODE;
-
-    -- Submission must exist and be in 'draft' state
-    SELECT      *
-    FROM        core.submission
-    WHERE       submission_id = in_submission_id
-    INTO        r_submission;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION
-            'Submission (%) does not exist!', in_submission_id
-            USING HINT = 'SUBMISSION_NOT_FOUND';
-    ELSIF r_submission.state != 'draft' THEN
-        RAISE EXCEPTION
-            'Submission (%) is not in ''draft'' state!', in_submission_id
-            USING HINT = 'SUBMISSION_NOT_DRAFT';
+            'ERROR: Configuration table ''system.config'' is empty!'
+            USING HINT = 'CONFIG_ERROR';
     END IF;
 
     -- Assistant must be working for the same course as the submission is for
@@ -240,12 +310,12 @@ BEGIN
     FROM        assistant.assistant
     WHERE       uid = in_uid
                 AND
-                course_id = r_submission.course_id
+                course_id = in_course_id
     INTO        r_assistant;
     IF NOT FOUND THEN
         RAISE EXCEPTION
             'Assistant (''%'') is not registered for course (''%'')!',
-            in_uid, r_submission.course_id
+            in_uid, in_course_id
             USING HINT = 'ASSISTANT_NOT_REGISTERED';
     ELSIF r_assistant.status != 'active' THEN
         RAISE EXCEPTION
@@ -253,13 +323,42 @@ BEGIN
             USING HINT = 'ASSISTANT_NOT_ACTIVE';
     END IF;
 
-    -- Evaluation record either does not exist or 
-    -- belongs to the same assistant and is not closed
-    SELECT      *
+    -- ACCESS EXCLUSIVE to prevent anyone from choosing the same
+    -- submission simultaneously
+    LOCK TABLE core.submission, assistant.evaluation IN ACCESS EXCLUSIVE MODE;
+
+    -- Check for existing (unfinished) evaluation record for RESTART
+    SELECT      evaluation.submission_id
     FROM        assistant.evaluation
-    WHERE       submission_id = in_submission_id
-    INTO        r_evaluation;
+    WHERE       evaluation.uid = in_uid
+                AND
+                evaluation.course_id = in_course_id
+                AND
+                evaluation.ended IS NULL
+    INTO        v_submission_id;
+
     IF NOT FOUND THEN
+
+        -- CHOOSE NEW 'draft' SUBMISSION
+        -- Using assistant.workqueue() guarantees:
+        --      1) Submission is 'draft'
+        --      2) Evaluation not underway (evaluator_uid IS NULL)
+        SELECT      queue_item.submission_id
+        FROM        assistant.workqueue(in_uid) queue_item
+        WHERE       queue_item.evaluator_uid IS NULL
+                    AND
+                    queue_item.course_id = in_course_id
+        ORDER BY    queue_item.submitted ASC
+        LIMIT       1
+        INTO        v_submission_id;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION
+                'ERROR: No pending submission found for assistant assignment (''%'', ''%'')',
+                in_course_id, in_uid
+                USING HINT = 'SUBMISSION_NOT_FOUND';
+        END IF;
+
+        -- Create new evaluation record
         INSERT INTO assistant.evaluation
         (
             submission_id,
@@ -268,26 +367,11 @@ BEGIN
         )
         VALUES
         (
-            in_submission_id,
-            r_submission.course_id,
+            v_submission_id,
+            in_course_id,
             in_uid
         );
-    ELSE
-        IF r_evaluation.ended IS NOT NULL THEN
-            RAISE EXCEPTION
-            'Evaluation for submission (%) is already completed!',
-            in_submission_id
-            USING HINT = 'EVALUATION_COMPLETED';
-        ELSIF r_evaluation.uid != in_uid THEN
-            RAISE EXCEPTION
-            'Evaluation for submission (%) belongs to another assistant (''%'')',
-            in_submission_id, r_evaluation.uid
-            USING HINT = 'EVALUATION_OWNER';
-        END IF;
-        -- Update assistant.evaluation.started
-        UPDATE  assistant.evaluation
-        SET     started = CURRENT_TIMESTAMP
-        WHERE   submission_id = in_submission_id;
+
     END IF;
 
     --
@@ -301,8 +385,8 @@ BEGIN
     )
     VALUES
     (
-        in_submission_id,
-        assistant.pseudo_encrypt(in_submission_id),
+        v_submission_id,
+        assistant.pseudo_encrypt(v_submission_id),
         CURRENT_TIMESTAMP + v_token_duration
     )
     ON CONFLICT (submission_id)
@@ -310,11 +394,19 @@ BEGIN
         expires = CURRENT_TIMESTAMP + v_token_duration
     RETURNING token
     INTO v_accesstoken;
-    RETURN v_accesstoken;
+
+    RETURN QUERY
+        SELECT  v_submission_id,
+                v_accesstoken;
 END;
 $$;
 GRANT EXECUTE ON FUNCTION assistant.evaluation_begin TO "www-data";
 GRANT EXECUTE ON FUNCTION assistant.evaluation_begin TO schooner_dev;
+
+COMMENT ON FUNCTION assistant.evaluation_begin IS
+'This function creates (up updates) an evaluation record and generates a time-limited access token that instructs the Flask endpoint to allow submission downloads with the token.';
+
+
 
 
 \echo '=== assistant.evaluation_close()'
@@ -693,86 +785,6 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO "www-data";
 GRANT EXECUTE ON FUNCTION assistant.evaluation_reject TO schooner_dev;
-
-
-
-
-\echo '=== assistant.workqueue()'
-CREATE OR REPLACE FUNCTION assistant.workqueue(
-    in_uid                  VARCHAR
-)
-    RETURNS TABLE
-    (
-        submission_id       INTEGER,
-        lastname            VARCHAR,
-        firstname           VARCHAR,
-        course_id           VARCHAR,
-        assignment_id       VARCHAR,
-        assignment_name     VARCHAR,
-        student_uid         VARCHAR,
-        submitted           TIMESTAMP,
-        deadline            DATE,
-        evaluator_uid       VARCHAR,
-        evaluator_name      VARCHAR,
-        evaluation_started  TIMESTAMP
-    )
-    LANGUAGE PLPGSQL
-    STRICT
-AS $$
--- Returns all unevaluated HUBBOT assignment submissions for course(s) in which
--- the given assistant uid is registered as an active assistant.
-BEGIN
-    RETURN QUERY
-        SELECT      submission.submission_id,
-                    enrollee.lastname,
-                    enrollee.firstname,
-                    submission.course_id,
-                    submission.assignment_id,
-                    assignment.name AS assignment_name,
-                    submission.uid,
-                    submission.submitted,
-                    assignment.deadline,
-                    evaluation.uid AS evaluator_uid,
-                    assistant.name AS evaluator_name,
-                    evaluation.started AS evaluation_started
-        FROM        core.submission
-                    INNER JOIN core.enrollee
-                    ON (
-                            submission.uid = enrollee.uid
-                            AND
-                            submission.course_id = enrollee.course_id
-                        )
-                    INNER JOIN core.assignment
-                    ON (
-                        submission.assignment_id = assignment.assignment_id
-                        AND
-                        submission.course_id = assignment.course_id
-                        AND
-                        assignment.handler = 'HUBBOT'
-                    )
-                    LEFT OUTER JOIN assistant.evaluation
-                    ON (submission.submission_id = evaluation.submission_id)
-                    LEFT OUTER JOIN assistant.assistant
-                    ON (
-                        evaluation.course_id = assistant.course_id
-                        AND
-                        evaluation.uid = assistant.uid
-                    )
-        WHERE       submission.state = 'draft'
-                    AND -- only the courses the user is assistant at
-                    submission.course_id IN (
-                        SELECT      assistant.course_id
-                        FROM        assistant.assistant
-                        WHERE       assistant.uid = in_uid
-                    );
-    RETURN;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION assistant.workqueue TO "www-data";
-GRANT EXECUTE ON FUNCTION assistant.workqueue TO schooner_dev;
-
-COMMENT ON FUNCTION assistant.workqueue IS
-'Return a list of non-evaluated HUBBOT submissions for all courses that the assistant is signed for.';
 
 
 

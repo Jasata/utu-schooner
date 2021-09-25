@@ -31,6 +31,7 @@
 #   2020-09-18  Add ALLOWED_EXT to 'cron.jobs/site.conf'.
 #   2020-09-27  Change database script location to 'sql/'.
 #   2021-08-07  Modified for Schooner application.
+#   2021-09-23  Removed LOG_FILENAME from instance/application.conf content.
 #
 #
 #   ==> REQUIRES ROOT PRIVILEGES TO RUN! <==
@@ -545,7 +546,6 @@ SSO_SESSION_API         = '{{sso_session_api}}'
 #
 # Flask app logging
 #
-LOG_FILENAME             = 'application.log'
 LOG_LEVEL                = '{{log_level}}'
 
 

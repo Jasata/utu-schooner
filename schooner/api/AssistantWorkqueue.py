@@ -7,6 +7,7 @@
 #
 # AssistantWorkqueue.py - Data object for assistant workqueue
 #   2021-09-04  Initial version.
+#   2021-09-25  Support for NULL and NOT NULL column criterion.
 #
 #
 
@@ -22,9 +23,15 @@ class AssistantWorkqueue(list):
         """
         where = []
         for k, v in kwargs.items():
-            if not isinstance(v, list):
-                kwargs[k] = [v]
-            where.append(f" {k} = ANY(%({k})s) ")
+            if v is None or (isinstance(v, bool) and v is False):
+                where.append(f" {k} IS NULL")
+            elif (isinstance(v, bool) and v is True):
+                where.append(f" {k} IS NOT NULL")
+            else:
+                if not isinstance(v, list):
+                    kwargs[k] = [v]
+                where.append(f" {k} = ANY(%({k})s) ")
+        # Crete WHERE clause
         if where:
             self.SQL += f" WHERE {' AND '.join(where)}"
         kwargs['uid'] = uid

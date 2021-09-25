@@ -98,15 +98,26 @@ class Evaluation(dict):
 
 
 
-    def begin(self) -> int:
-        """Begins evaluation and returns an access token. Usage: create empty object (without PK values), fill it in with assistant uid and submission_id. Then call this method."""
-        # Function returns an accesscode
+    def begin(self, course_id: str = None, uid: str = None) -> int:
+        """Begins evaluation and returns an access token. If argument is not supplied, one is used from the object instance. If that does not exist either, an exception is raised."""
+        if course_id:
+            self['course_id'] = course_id
+        if uid:
+            self['uid'] = uid
+        if not self['course_id'] or not self['uid']:
+            raise ValueError(
+                "Assistant assignment ('course_id', 'uid') must have values!\n" +
+                f"(course_id: '{self['course_id']}', uid: '{self['uid']}')"
+            )
+        # Function selects the longest-waiting 'draft' submission and returns an accesscode
         SQL = """
-            SELECT assistant.evaluation_begin(%(uid)s, %(submission_id)s)
+            SELECT      *
+            FROM        assistant.evaluation_begin(%(course_id)s, %(uid)s) new_eval
         """
-        accesstoken = self.cursor.execute(SQL, self).fetchone()[0]
+        self['submission_id'], accesstoken = self.cursor.execute(SQL, self).fetchone()
+        # Commit and release locks
         self.cursor.connection.commit()
-        # update this dictionary
+        # update/relaod this dictionary
         self.__update()
         return accesstoken
 

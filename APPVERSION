@@ -5,6 +5,7 @@
 #
 #   2021-08-07  Version 0.1.0
 #   2021-09-08  Version 0.2.0, GitHub backend is working
+#   2021-09-23  Version 0.3.0, Test-ready for Autumn 2021
 #
 # This file may contain ONLY one single non-comment line.
 # That row is expected to contain a semantic version string "x.y.z".
@@ -13,4 +14,4 @@
 #
 # 
 
-0.2.0
+0.3.0
