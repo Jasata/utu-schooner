@@ -4,7 +4,7 @@ Simple enrollment roster that manages deadlines, tasks, and scoring.
 
 ## Dependencies
 
-Current version of `setup.py` does not install dependencies, merely checks that they are installed.
+Current version of `setup.py` is NON-FUNCTIONAL and needs to be re-written!
 
 - PostgreSQL (tested with version 11)
 - Psycopg3 (PostgreSQL connector, pre-release version dev2)
@@ -17,16 +17,24 @@ Current version of `setup.py` does not install dependencies, merely checks that 
  - **Integration-friendly Architecture**. Basically meaning that the backend is a REST API and none of the client pages are dynamically parsed.
 
 
-## Functional Specifications
+## Functional Specifications (project goals)
 
-- UTU SSO authentication.
-- Student can register GitHub account name.
-- Student can view course progress and score.
-- Model course curriculum in "requirements".
-- Exam privilege tracking (when earned, date and time recorded).
-- Free-form text for each student-course-year allowing special considerations.
-- Can import ViLLE/A+ quizz scores.
-- Can import exam.utu.fi exports.
+Parenthesis document status for RC1 (version 0.4.0)
+
+- UTU SSO authentication. (**OK**)
+- Student can register GitHub account name. (**OK**)
+- Student can view course progress and score. (NOK)
+- Model course curriculum in "requirements". (Mostly OK, as _Assignments_)
+- Exam privilege tracking (when earned, date and time recorded). (NOK)
+- Free-form text for each student-course-year allowing special considerations. (NOK)
+- Can import ViLLE/A+ quizz scores. (NOK)
+- Can import exam.utu.fi exports. (NOK)
+- MS Teams integration, automatic course group addition, messages, etc. (NOK)
+- Asset (component kit) management (**OK**)
+- Automated notifications and per-student notification settings (very basic)
+- Assistant workqueue system (**OK**)
+- Assistant Virtual Machine / submission evaluation transfers (**OK**)
+- Student score calculator and grader (NOK)
 
 ## GDPR
 
@@ -41,7 +49,6 @@ Frontend
  - [Datatables 1.10.20](https://datatables.net/) for download page tables
  - [CardTabs 1.0](https://github.com/blekerfeld/CardTabs) for tabulated content
  - [JSONForm](https://github.com/jsonform/jsonform) for VM details edit
- - [Flow.js v.2.13.2](https://github.com/flowjs/flow.js/) for HTML5 File API transfers
  
 Backend
 - Nginx ver.1.14.0+

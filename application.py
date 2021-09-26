@@ -171,6 +171,14 @@ root.addHandler(
         level = app.config.get('LOG_LEVEL', 'DEBUG')
     )
 )
+# WHY does the root logging level apply?
+app.logger.setLevel(
+    getattr(
+        logging,
+        str(app.config.get('LOG_LEVEL', 'DEBUG')),
+        logging.DEBUG
+    )
+)
 app.logger.info(
     "Logging enabled for level {} ({})"
     .format(

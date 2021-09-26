@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
+# Very basic demo for a background task.
+#
 import os
 import sys
 import time
