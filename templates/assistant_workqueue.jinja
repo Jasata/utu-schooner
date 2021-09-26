@@ -12,7 +12,7 @@
 {% block content %}
 <script>
     function cancel_evaluation(submission_id) {
-        if (!window.confirm("Are you sure?")) {
+        if (!window.confirm("This will cancel the evaluation and return the submission back into the work queue.\n\nAre you sure?")) {
             return false;
         }
         var form = document.createElement("form");

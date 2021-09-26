@@ -733,7 +733,7 @@ def assistant_index():
             raise Exception("You are not registed as an assistant!")
         return flask.render_template(
             'assistant_index.jinja',
-            title = "Assistant Information",
+            title = "Assistant's Course Listing",
             assistant_name = Assistant.get_name(g.db.cursor(), sso.uid),
             courselist = AssistantList(g.db.cursor(), uid = sso.uid)
         )

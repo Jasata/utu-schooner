@@ -46,9 +46,7 @@
     </style>
     <div>
         <h2>{{ assistant_name }}</h2>
-        <p>
-            Basic assistant view...
-        </p>
+        <p>&nbsp;</p>
         <p>
         <h3>Registered as an assistant to courses</h3>
 {% if courselist|length == 0 %}
@@ -60,8 +58,8 @@
                 <th>Code</th>
                 <th>Name</th>
                 <th style="text-align: center;">Students</th>
-                <th style="text-align: center;">Pending Submissions</th>
-                <th>Assigned Date</th>
+                <th style="text-align: center;">Work Queue</th>
+                <th>Started as an Assistant</th>
                 <th>Assistant Status</th>
             </tr>
     {% for course in courselist %}
