@@ -14,6 +14,7 @@
 #   2021-08-29  (JTa) Add lockfile.
 #   2021-08-30  (JTa) Now changes CWD /before/ attempting to read 'app.conf'.
 #                     Imports from shared schooner package.
+#   2021-09-26  (JTa) Configure root logging instance instead of local.
 #   
 #
 # Scans 'email.message' table for unsent messages and sends them.
@@ -222,8 +223,8 @@ cfg = AppConfig(CONFIG_FILE, "mailbot")
 #
 # Set up logging
 #
-log = logging.getLogger(os.path.basename(__file__))
-log.setLevel(cfg.loglevel)
+root = logging.getLogger()
+root.setLevel(cfg.loglevel)
 if os.isatty(sys.stdin.fileno()):
     # Executed from console
     # (sys.stdin will be a TTY when executed from console)
@@ -231,17 +232,19 @@ if os.isatty(sys.stdin.fileno()):
     handler.setFormatter(
         logging.Formatter('[%(levelname)s] %(message)s')
     )
-    log.addHandler(handler)
+    root.addHandler(handler)
 else:
     # Executed from crontab
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
     handler.setFormatter(
         logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
     )
-    log.addHandler(handler)
+    root.addHandler(handler)
 # DB Handler
 handler = LogDBHandler(cfg.database, level = cfg.loglevel)
-log.addHandler(handler)
+root.addHandler(handler)
+# Logger with a useful name
+log = logging.getLogger(os.path.basename(__file__))
 
 
 

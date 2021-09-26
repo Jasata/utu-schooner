@@ -11,6 +11,7 @@
 #   2019-12-23  Add SSO object creation and .update()
 #               @app.before_request
 #   2021-09-02  Add DB log (system.log) handler
+#   2021-09-26  Add logging handlers to root to preserve them for modules.
 #
 #
 # Code in this file gets executed ONLY ONCE, when the uWSGI is started.
@@ -110,7 +111,9 @@ finally:
 
 
 # PEP 396 -- Module Version Numbers https://www.python.org/dev/peps/pep-0396/
-__appdate__     = datetime.datetime.fromtimestamp(os.path.getmtime('APPVERSION')).strftime("%Y-%m-%d")
+__appdate__     = datetime.datetime.fromtimestamp(
+    os.path.getmtime('APPVERSION')
+).strftime("%Y-%m-%d")
 __version__     = f"{app.appversion} ({__appdate__})"
 __authors__     = "Jani Tammi <jasata@utu.fi>, Tuisku Polvinen <tumipo@utu.fi>"
 VERSION         = __version__
@@ -138,13 +141,21 @@ University of Turku, Faculty of Technology, Department of Computing
 app.config.from_pyfile('application.conf')
 
 
+#
+# Flask Logging Configuration
+#
+# Get root logger and install handlers. Setting up the root logger enables
+# packages and modules to .getLogger(__name__) and have the application-wide
+# handlers (most importantly, the DB logger) in effect.
+root = logging.getLogger()
+
 # Setting is given as a string, which needs to be converted into
 # the integer value that logger module uses. Default to DEBUG.
 # Using getattr() with default instead of logging.getLevelName()
 # because the logger function has a nasty feature of returning
 # invalid values as string "Level " + <invalid value>.
 # We definitely need a valid fallback value for invalid arguments.
-app.logger.setLevel(
+root.setLevel(
     getattr(
         logging,
         str(app.config.get('LOG_LEVEL', 'DEBUG')),
@@ -154,7 +165,7 @@ app.logger.setLevel(
 #
 # Add DB Log Handler
 #
-app.logger.addHandler(
+root.addHandler(
     LogDBHandler(
         app.config.get('PGSQL_DATABASE'),
         level = app.config.get('LOG_LEVEL', 'DEBUG')

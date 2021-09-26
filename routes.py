@@ -748,7 +748,7 @@ def assistant_index():
 
 
 @app.route("/assistant_workqueue.html", methods=['GET'])
-def assistant_workqueue_get():
+def assistant_workqueue_index():
     from schooner.db.assistant  import CourseAssistant
     from schooner.api           import AssistantWorkqueue
     try:
@@ -830,7 +830,7 @@ def assistant_evaluation():
         return flask.render_template(
             'assistant_evaluation.jinja',
             title = "Submission evaluation",
-            message = "Not yet implemented",
+            message = "",
             submission = submission
         )
     except Exception as e:
@@ -848,7 +848,6 @@ def assistant_evaluation():
 def assistant_evaluation_begin():
     from schooner.db.assistant  import CourseAssistant
     from schooner.db.assistant  import Evaluation
-    from schooner.api           import AssistantWorkqueue
     # Required POST parameter(s): sid (submission_id)
     try:
         if not sso.is_authenticated:
@@ -870,6 +869,14 @@ def assistant_evaluation_begin():
         # Begin evaluation (automatically chooses the oldest pending submission)
         token = evaluation.begin(cid, sso.uid)
 
+        app.logger.info(
+            "EVALUATION BEGIN: '{}' started #{} ('{}')".format(
+                evaluation['uid'],
+                evaluation['submission_id'],
+                evaluation['course_id']
+            )
+        )
+
         # Go and initiate local transfer at Assistant vm
         return flask.redirect(f"http://localhost:8080/fetch?token={token}")
 
@@ -886,7 +893,7 @@ def assistant_evaluation_begin():
 
 @app.route('/assistant_evaluation_cancel.html', methods=['POST'])
 def assistant_evaluation_cancel():
-    from schooner.db.assistant import Evaluation
+    from schooner.db.assistant  import Evaluation
     # Required POST parameter(s): sid (submission_id)
     try:
         if not sso.is_authenticated:
@@ -902,6 +909,15 @@ def assistant_evaluation_cancel():
             raise Exception(f"Evaluation of submission #{sid} has been completed and cannot be cancelled!")
         # Checks are done, cancel
         task.cancel()
+
+        app.logger.info(
+            "EVALUATION CANCEL: '{}' cancelled #{} ('{}')".format(
+                task['uid'],
+                task['submission_id'],
+                task['course_id']
+            )
+        )
+
         #
         # Call upon the local agent to remove the project directory
         #
@@ -926,7 +942,7 @@ def assistant_evaluation_cancel():
 
 @app.route('/assistant_evaluation_reject.html', methods=['POST'])
 def assistant_evaluation_reject():
-    from schooner.db.assistant import Evaluation
+    from schooner.db.assistant  import Evaluation
     # Required POST parameter(s):
     #   sid : int           submission.submission_id
     #   feedback : str      submission.feedback
@@ -966,9 +982,16 @@ def assistant_evaluation_reject():
             raise Exception(f"Evaluation of submission #{data['sid']} has been completed and cannot be cancelled!")
         # Checks are done, cancel
         elapsed = task.reject(data['feedback'], data['confidential'])
-        app.logger.debug(
-            f"Submission #{task['submission_id']} REJECTED after {elapsed} of evaluating."
+
+        app.logger.info(
+            "EVALUATION REJECT: '{}' rejected #{} ('{}') after {} of evaluating.".format(
+                task['uid'],
+                task['submission_id'],
+                task['course_id'],
+                elapsed or "(unknown)"
+            )
         )
+
         #
         # Call upon the local agent to remove the project directory
         #
@@ -992,7 +1015,7 @@ def assistant_evaluation_reject():
 
 @app.route('/assistant_evaluation_accept.html', methods=['POST'])
 def assistant_evaluation_accept():
-    from schooner.db.assistant import Evaluation
+    from schooner.db.assistant  import Evaluation
     # Required POST parameter(s):
     #   sid : int           submission.submission_id
     #   feedback : str      submission.feedback
@@ -1043,9 +1066,16 @@ def assistant_evaluation_accept():
             data['feedback'],
             data['confidential']
         )
-        app.logger.debug(
-            f"Submission #{task['submission_id']} ACCEPTED after {elapsed} of evaluating."
+
+        app.logger.info(
+            "EVALUATION ACCEPT: '{}' accepted #{} ('{}') after {} of evaluating.".format(
+                task['uid'],
+                task['submission_id'],
+                task['course_id'],
+                elapsed or "(unknown)"
+            )
         )
+
         #
         # Call upon the local agent to remove the project directory
         #

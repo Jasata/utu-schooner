@@ -376,22 +376,24 @@ if __name__ == '__main__':
     #
     # Set up logging
     #
-    log = logging.getLogger(SCRIPTNAME)
-    log.setLevel(cfg.loglevel)
+    root = logging.getLogger()
+    root.setLevel(cfg.loglevel)
     if os.isatty(sys.stdin.fileno()):
         # Executed from terminal
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(
             logging.Formatter('[%(levelname)s] %(message)s')
         )
-        log.addHandler(handler)
+        root.addHandler(handler)
     else:
         # Executed from crontab
         handler = logging.handlers.SysLogHandler(address = '/dev/log')
         handler.setFormatter(
             logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
         )
-        log.addHandler(handler)
+        root.addHandler(handler)
+    # Get logging instance with useful name
+    log = logging.getLogger(SCRIPTNAME)
 
 
     args, _ = argparser.parse_known_args()

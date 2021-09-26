@@ -143,6 +143,7 @@ class Evaluation(dict):
         self.cursor.connection.commit()
         self.__update()
         # Send reject message
+        # Do last because Template can raise exceptions
         template        = Template(self.cursor, 'EVALUATION_ACCEPTED')
         data            = JTDSubmission(self.cursor, self['submission_id'])
         template.parse_and_queue(

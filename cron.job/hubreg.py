@@ -94,25 +94,27 @@ if __name__ == '__main__':
     #
     # Set up logging
     #
-    log = logging.getLogger(SCRIPTNAME)
-    log.setLevel(cfg.loglevel)
+    root = logging.getLogger()
+    root.setLevel(cfg.loglevel)
     if os.isatty(sys.stdin.fileno()):
         # Executed from terminal
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(
             logging.Formatter('[%(levelname)s] %(message)s')
         )
-        log.addHandler(handler)
+        root.addHandler(handler)
     else:
         # Executed from crontab
         handler = logging.handlers.SysLogHandler(address = '/dev/log')
         handler.setFormatter(
             logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
         )
-        log.addHandler(handler)
+        root.addHandler(handler)
     # DB Handler
     handler = LogDBHandler(cfg.database, level = cfg.loglevel)
-    log.addHandler(handler)
+    root.addHandler(handler)
+    # Log instance with useful name
+    log = logging.getLogger(SCRIPTNAME)
 
 
     # Script/execution level try-except
@@ -161,17 +163,36 @@ if __name__ == '__main__':
                                 headers=headers
                             )
 
-                            log.debug(f"Request status: {requests.get(repo_url, headers=headers).status_code}")
                             # Check that the repository is now accessible
-                            if requests.get(repo_url, headers=headers).status_code == 200:
+                            status_code = requests.get(
+                                repo_url,
+                                headers = headers
+                            ).status_code
+                            if status_code == 200:
                                 # Register AND send notification
-                                log.debug("REGISTER REPO")
+                                log.debug(
+                                    "Registering '{}' for enrollee ('{}', '{}')".format(
+                                        reg['student_repository'],
+                                        reg['course_id'],
+                                        reg['uid']
+                                    )
+                                )
                                 GitRegistration.register_repository(
                                     cursor,
                                     reg['submission_id'],
                                     reg['student_repository']
                                 )
                                 cntr.add(Counter.OK)
+                            else:
+                                # status code not 200
+                                log.debug(
+                                    "Repository query '{}' for enrollee ('{}', '{}') returned {}".format(
+                                        reg['student_repository'],
+                                        reg['course_id'],
+                                        reg['uid'],
+                                        status_code
+                                    )
+                                )
 
                         # TODO: handle possible cases where an invitation has
                         #       already been accepted in github 

@@ -80,17 +80,19 @@ if __name__ == '__main__':
     #
     # Setup logging
     #
-    log = logging.getLogger(os.path.basename(__file__))
-    log.setLevel(cfg.loglevel)
+    root = logging.getLogger()
+    root.setLevel(cfg.loglevel)
     # STDOUT handler
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(
         logging.Formatter('[%(levelname)s] %(message)s')
     )
-    log.addHandler(handler)
+    root.addHandler(handler)
     # DB Handler
     handler = LogDBHandler(cfg.database, level = cfg.loglevel)
-    log.addHandler(handler)
+    root.addHandler(handler)
+    # Logging instance with useful name
+    log = logging.getLogger(os.path.basename(__file__))
 
     log.debug("Debug spam")
     log.info("A damn message....")

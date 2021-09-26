@@ -228,19 +228,10 @@ class SQLiteScript(File):
         super().sort(key=lambda k : k[key])
 
 
+
 if __name__ == '__main__':
 
-    from schooner.api import AssistantWorkqueue
-
-    with psycopg.connect(f"dbname=schooner").cursor() as cursor:
-        q = AssistantWorkqueue(
-            cursor,
-            'jasata',
-            course_id = 'DTEK0000-3002',
-            evaluator_uid = False
-        )
-        print(q.SQL)
-        for row in q:
-            print("#", row['submission_id'])
+    pass
+    #with psycopg.connect(f"dbname=schooner").cursor() as cursor:
 
 # EOF
