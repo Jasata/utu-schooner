@@ -112,7 +112,7 @@ class Evaluation(dict):
         # Function selects the longest-waiting 'draft' submission and returns an accesscode
         SQL = """
             SELECT      *
-            FROM        assistant.evaluation_begin(%(course_id)s, %(uid)s) new_eval
+            FROM        assistant.evaluation_begin(%(course_id)s, %(uid)s)
         """
         self['submission_id'], accesstoken = self.cursor.execute(SQL, self).fetchone()
         # Commit and release locks

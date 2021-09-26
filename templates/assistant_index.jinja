@@ -59,8 +59,8 @@
                 <th>Year</th>
                 <th>Code</th>
                 <th>Name</th>
-                <th>Students</th>
-                <th>Pending Submissions</th>
+                <th style="text-align: center;">Students</th>
+                <th style="text-align: center;">Pending Submissions</th>
                 <th>Assigned Date</th>
                 <th>Assistant Status</th>
             </tr>
@@ -75,8 +75,8 @@
                 <td>{{ course['course_opens'].strftime('%Y') }}</td>
                 <td>{{ course['course_code'] }}</td>
                 <td><div class="truncate">{{ course['course_name'] }}</div></td>
-                <td>n_active_enrollees</td>
-                <td>n_draft_hubbot_submissions</td>
+                <td style="text-align: center;">{{ course['n_active_enrollees'] }}</td>
+                <td style="text-align: center;">{{ course['n_draft_submissions'] }}</td>
                 <td>{{ course['assistant_created'].strftime('%Y-%m-%d') }}</td>
                 <td>{{ course['assistant_status'] }}</td>
             </tr>

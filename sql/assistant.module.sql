@@ -282,10 +282,14 @@ AS $$
 --      TABLE of (submission_id, accesstoken)
 --
 -- Notes
---      Of all the dumb things in PostgreSQL, this is one of the top 10...
+--      For some reason, PostgreSQL puts RETURN TABLE columns into local scope.
+--      https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-TABLE
 --      If the RETURNS TABLE defines a column name 'submission_id', then
 --      the UPSERT assistant.accesstoken ... ON CONFLICT (submission_id)
---      becomes "ambiguous"!! That seems like beyond stupid, more like a bug!
+--      becomes "ambiguous".
+--      ON CONFLICT (accesstoken.submission_id) is a syntax error is one thing..
+--      But another is, why exactly does PostgreSQL even consider a variable as
+--      legit conflict_target... (??)
 --
 DECLARE
     r_assistant         RECORD;

@@ -723,7 +723,7 @@ def notifications_post():
 #
 #
 @app.route("/assistant.html", methods=['GET'])
-def assistant_get():
+def assistant_index():
     """Basic assistant page. TBA."""
     from schooner.db.assistant import Assistant, AssistantList
     try:
